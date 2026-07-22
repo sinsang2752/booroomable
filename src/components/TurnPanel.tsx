@@ -1,0 +1,63 @@
+import { BOARD } from '../game/board';
+import type { GameState } from '../game/types';
+
+interface TurnPanelProps {
+  state: GameState;
+  onRoll: () => void;
+  onDecide: (buy: boolean) => void;
+}
+
+export function TurnPanel({ state, onRoll, onDecide }: TurnPanelProps) {
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  const pendingTile =
+    state.pendingPurchaseTileIdx !== null ? BOARD[state.pendingPurchaseTileIdx] : null;
+
+  return (
+    <div className="turn-panel">
+      <div className="turn-panel-current">
+        <span className="turn-panel-name" style={{ color: `var(--color-${currentPlayer.color})` }}>
+          {currentPlayer.name}
+        </span>
+        <span className="turn-panel-turn-number">턴 {state.turnNumber}</span>
+      </div>
+
+      {state.lastRoll && (
+        <div className="turn-panel-dice">
+          🎲 {state.lastRoll[0]} + {state.lastRoll[1]}
+        </div>
+      )}
+
+      {state.notice && <p className="turn-panel-notice">{state.notice}</p>}
+
+      {state.phase === 'awaiting-roll' && (
+        <button type="button" className="roll-button" onClick={onRoll}>
+          주사위 굴리기
+        </button>
+      )}
+
+      {state.phase === 'awaiting-purchase-decision' && pendingTile && (
+        <div className="purchase-prompt">
+          <button type="button" onClick={() => onDecide(true)}>
+            구매 ({pendingTile.price})
+          </button>
+          <button type="button" onClick={() => onDecide(false)}>
+            패스
+          </button>
+        </div>
+      )}
+
+      <ul className="turn-panel-players">
+        {state.players.map((p) => (
+          <li
+            key={p.id}
+            className={p.id === currentPlayer.id ? 'active' : ''}
+            style={{ borderColor: `var(--color-${p.color})` }}
+          >
+            <span>{p.name}</span>
+            <span>{p.isBankrupt ? '파산' : p.balance}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
