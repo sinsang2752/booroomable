@@ -1,7 +1,9 @@
-import type { PlayerColor } from '../game/types.ts';
+import type { PlayerColor, TurnPhase } from '../game/types.ts';
 
 export type RoomStatus = 'waiting' | 'playing' | 'finished';
-export type GamePhase = 'awaiting-roll' | 'awaiting-purchase-decision' | 'game-over';
+/** game/types.ts의 TurnPhase를 그대로 재사용 — 예전엔 여기 따로 값을 나열해두다가
+ * 건물 시스템 phase들이 추가될 때 갱신을 빠뜨려 실제 런타임 값과 어긋난 적이 있어 별칭으로 통일. */
+export type GamePhase = TurnPhase;
 
 export interface RoomRow {
   id: string;
@@ -18,6 +20,8 @@ export interface RoomRow {
   last_roll_d2: number | null;
   is_double_roll: boolean;
   pending_purchase_tile_idx: number | null;
+  event_deck: number[] | null;
+  welfare_pool: number;
   winner_player_id: string | null;
   notice: string | null;
   version: number;

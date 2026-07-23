@@ -1,6 +1,6 @@
 export type PlayerColor = 'blue' | 'red' | 'green' | 'amber';
 
-export type TileType = 'start' | 'jail' | 'empty_land';
+export type TileType = 'start' | 'jail' | 'empty_land' | 'event' | 'welfare_pay' | 'welfare_get';
 
 export type TurnPhase =
   | 'awaiting-roll'
@@ -41,6 +41,10 @@ export interface GameState {
   isDoubleRoll: boolean;
   /** 구매 대기와 건물 업그레이드 대기 둘 다 이 필드를 쓴다 (phase로 구분) */
   pendingPurchaseTileIdx: number | null;
+  /** 황금열쇠 덱에서 아직 안 뽑은 카드의 순서(GOLDEN_KEY_DECK 인덱스). 다 뽑으면 다시 셔플. */
+  eventDeck: number[];
+  /** 사회복지기금 적립액. welfare_pay 칸에서 쌓이고 welfare_get 칸에서 전액 수령. */
+  welfarePool: number;
   winnerId: string | null;
   turnNumber: number;
   notice: string | null;

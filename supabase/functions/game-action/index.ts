@@ -61,7 +61,7 @@ async function applyPatches(
   newState: GameState,
   claimedVersion: number,
 ): Promise<void> {
-  const { roomPatch, playerPatches, ownershipPatch } = computePatches(oldState, newState);
+  const { roomPatch, playerPatches, ownershipUpserts, ownershipDeletions } = computePatches(oldState, newState);
 
   const playerResults = await Promise.all(
     playerPatches.map((patch) =>
@@ -80,16 +80,25 @@ async function applyPatches(
     if (result.error) throw result.error;
   }
 
-  if (ownershipPatch) {
+  if (ownershipUpserts.length > 0) {
     const { error } = await supabase.from('ownerships').upsert(
-      {
+      ownershipUpserts.map((patch) => ({
         room_id: roomId,
-        tile_idx: ownershipPatch.tile_idx,
-        player_id: ownershipPatch.player_id,
-        level: ownershipPatch.level,
-      },
+        tile_idx: patch.tile_idx,
+        player_id: patch.player_id,
+        level: patch.level,
+      })),
       { onConflict: 'room_id,tile_idx' },
     );
+    if (error) throw error;
+  }
+
+  if (ownershipDeletions.length > 0) {
+    const { error } = await supabase
+      .from('ownerships')
+      .delete()
+      .eq('room_id', roomId)
+      .in('tile_idx', ownershipDeletions);
     if (error) throw error;
   }
 
@@ -148,6 +157,8 @@ async function handleStartGame(supabase: SupabaseClient, roomId: string, clientI
       last_roll_d2: null,
       is_double_roll: false,
       pending_purchase_tile_idx: null,
+      event_deck: [],
+      welfare_pool: 0,
       winner_player_id: null,
       notice: null,
       version: 0,

@@ -40,6 +40,8 @@ export function dbToGameState(
         : null,
     isDoubleRoll: room.is_double_roll,
     pendingPurchaseTileIdx: room.pending_purchase_tile_idx,
+    eventDeck: room.event_deck ?? [],
+    welfarePool: room.welfare_pool,
     winnerId: room.winner_player_id,
     turnNumber: room.turn_number,
     notice: room.notice,
@@ -55,6 +57,8 @@ export interface RoomPatch {
   last_roll_d2: number | null;
   is_double_roll: boolean;
   pending_purchase_tile_idx: number | null;
+  event_deck: number[];
+  welfare_pool: number;
   winner_player_id: string | null;
   notice: string | null;
 }
@@ -76,7 +80,10 @@ export interface OwnershipPatch {
 export interface GameStatePatches {
   roomPatch: RoomPatch;
   playerPatches: PlayerPatch[];
-  ownershipPatch: OwnershipPatch | null;
+  /** 새로 산 땅이거나 레벨이 바뀐 땅 (자동매각으로 여러 칸이 한 번에 바뀔 수 있어 배열) */
+  ownershipUpserts: OwnershipPatch[];
+  /** 자동매각으로 소유권 자체가 사라진 칸의 tile_idx 목록 */
+  ownershipDeletions: number[];
 }
 
 /** gameReducer 실행 전/후 GameState를 비교해서 DB에 쓸 값들을 뽑아낸다. */
@@ -90,6 +97,8 @@ export function computePatches(oldState: GameState, newState: GameState): GameSt
     last_roll_d2: newState.lastRoll?.[1] ?? null,
     is_double_roll: newState.isDoubleRoll,
     pending_purchase_tile_idx: newState.pendingPurchaseTileIdx,
+    event_deck: newState.eventDeck,
+    welfare_pool: newState.welfarePool,
     winner_player_id: newState.winnerId,
     notice: newState.notice,
   };
@@ -102,17 +111,25 @@ export function computePatches(oldState: GameState, newState: GameState): GameSt
     skip_next_turn: p.skipNextTurn,
   }));
 
-  let ownershipPatch: OwnershipPatch | null = null;
+  const ownershipUpserts: OwnershipPatch[] = [];
+  const ownershipDeletions: number[] = [];
   for (let idx = 0; idx < newState.tileOwners.length; idx += 1) {
+    const oldOwnerId = oldState.tileOwners[idx];
     const newOwnerId = newState.tileOwners[idx];
-    if (newOwnerId === null) continue;
-    const ownerChanged = oldState.tileOwners[idx] !== newOwnerId;
+
+    if (newOwnerId === null) {
+      if (oldOwnerId !== null) {
+        ownershipDeletions.push(idx);
+      }
+      continue;
+    }
+
+    const ownerChanged = oldOwnerId !== newOwnerId;
     const levelChanged = oldState.tileLevels[idx] !== newState.tileLevels[idx];
     if (ownerChanged || levelChanged) {
-      ownershipPatch = { tile_idx: idx, player_id: newOwnerId, level: newState.tileLevels[idx] };
-      break;
+      ownershipUpserts.push({ tile_idx: idx, player_id: newOwnerId, level: newState.tileLevels[idx] });
     }
   }
 
-  return { roomPatch, playerPatches, ownershipPatch };
+  return { roomPatch, playerPatches, ownershipUpserts, ownershipDeletions };
 }

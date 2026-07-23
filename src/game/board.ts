@@ -1,10 +1,13 @@
 import {
   BOARD_SIZE,
+  EVENT_TILE_INDICES,
   JAIL_TILE_IDX,
   LAND_BASE_PRICE,
   LAND_PRICE_STEP,
   LAND_TOLL_RATIO,
   START_TILE_IDX,
+  WELFARE_GET_TILE_IDX,
+  WELFARE_PAY_TILE_IDX,
 } from './config.ts';
 import type { Tile } from './types.ts';
 
@@ -19,6 +22,18 @@ function buildBoard(): Tile[] {
     }
     if (idx === JAIL_TILE_IDX) {
       tiles.push({ idx, name: '무인도', type: 'jail', price: null, toll: null });
+      continue;
+    }
+    if (EVENT_TILE_INDICES.includes(idx)) {
+      tiles.push({ idx, name: '황금열쇠', type: 'event', price: null, toll: null });
+      continue;
+    }
+    if (idx === WELFARE_PAY_TILE_IDX) {
+      tiles.push({ idx, name: '복지기금 납부', type: 'welfare_pay', price: null, toll: null });
+      continue;
+    }
+    if (idx === WELFARE_GET_TILE_IDX) {
+      tiles.push({ idx, name: '복지기금 수령', type: 'welfare_get', price: null, toll: null });
       continue;
     }
 
