@@ -3,11 +3,13 @@ import type { GameState } from '../game/types';
 
 interface TurnPanelProps {
   state: GameState;
+  isMyTurn: boolean;
+  isSubmitting: boolean;
   onRoll: () => void;
   onDecide: (buy: boolean) => void;
 }
 
-export function TurnPanel({ state, onRoll, onDecide }: TurnPanelProps) {
+export function TurnPanel({ state, isMyTurn, isSubmitting, onRoll, onDecide }: TurnPanelProps) {
   const currentPlayer = state.players[state.currentPlayerIndex];
   const pendingTile =
     state.pendingPurchaseTileIdx !== null ? BOARD[state.pendingPurchaseTileIdx] : null;
@@ -29,18 +31,22 @@ export function TurnPanel({ state, onRoll, onDecide }: TurnPanelProps) {
 
       {state.notice && <p className="turn-panel-notice">{state.notice}</p>}
 
-      {state.phase === 'awaiting-roll' && (
-        <button type="button" className="roll-button" onClick={onRoll}>
+      {!isMyTurn && (
+        <p className="turn-panel-wait">{currentPlayer.name}님 차례입니다. 기다려주세요.</p>
+      )}
+
+      {isMyTurn && state.phase === 'awaiting-roll' && (
+        <button type="button" className="roll-button" onClick={onRoll} disabled={isSubmitting}>
           주사위 굴리기
         </button>
       )}
 
-      {state.phase === 'awaiting-purchase-decision' && pendingTile && (
+      {isMyTurn && state.phase === 'awaiting-purchase-decision' && pendingTile && (
         <div className="purchase-prompt">
-          <button type="button" onClick={() => onDecide(true)}>
+          <button type="button" onClick={() => onDecide(true)} disabled={isSubmitting}>
             구매 ({pendingTile.price})
           </button>
-          <button type="button" onClick={() => onDecide(false)}>
+          <button type="button" onClick={() => onDecide(false)} disabled={isSubmitting}>
             패스
           </button>
         </div>

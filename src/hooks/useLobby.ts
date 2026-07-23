@@ -9,15 +9,11 @@ import {
   startGame as requestStartGame,
 } from '../lobby/api';
 import { createRoomChannel, sendGameStarted, sendLobbyUpdated } from '../lobby/realtime';
-import type { GameRosterEntry, LobbyPlayer, RoomRow } from '../lobby/types';
+import type { LobbyPlayer, RoomRow } from '../lobby/types';
 import { getClientId } from '../lib/identity';
 import { supabase } from '../lib/supabaseClient';
 
-function toRoster(players: LobbyPlayer[]): GameRosterEntry[] {
-  return players.map((p) => ({ clientId: p.client_id, nickname: p.nickname }));
-}
-
-export function useLobby(roomId: string, onGameStart: (roster: GameRosterEntry[]) => void) {
+export function useLobby(roomId: string, onGameStart: () => void) {
   const clientId = useMemo(() => getClientId(), []);
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -38,7 +34,7 @@ export function useLobby(roomId: string, onGameStart: (roster: GameRosterEntry[]
 
       if (freshRoom.status === 'playing' && !startedRef.current) {
         startedRef.current = true;
-        onGameStartRef.current(toRoster(freshPlayers));
+        onGameStartRef.current();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -51,10 +47,10 @@ export function useLobby(roomId: string, onGameStart: (roster: GameRosterEntry[]
 
     const channel = createRoomChannel(roomId, clientId, {
       onLobbyUpdated: refreshLobby,
-      onGameStarted: (roster) => {
+      onGameStarted: () => {
         if (startedRef.current) return;
         startedRef.current = true;
-        onGameStartRef.current(roster);
+        onGameStartRef.current();
       },
     });
     channelRef.current = channel;
@@ -87,12 +83,11 @@ export function useLobby(roomId: string, onGameStart: (roster: GameRosterEntry[]
 
   const startGame = useCallback(async () => {
     if (!room) return;
-    await requestStartGame(room.id);
-    const roster = toRoster(players);
-    if (channelRef.current) sendGameStarted(channelRef.current, roster);
+    await requestStartGame(room.id, players);
+    if (channelRef.current) sendGameStarted(channelRef.current);
     if (!startedRef.current) {
       startedRef.current = true;
-      onGameStartRef.current(roster);
+      onGameStartRef.current();
     }
   }, [room, players]);
 

@@ -1,4 +1,4 @@
-import { MAX_PLAYERS, PLAYER_COLORS } from '../game/config';
+import { MAX_PLAYERS, PLAYER_COLORS, START_TILE_IDX, STARTING_BALANCE } from '../game/config';
 import { getClientId } from '../lib/identity';
 import { supabase } from '../lib/supabaseClient';
 import { generateRoomCode } from './roomCode';
@@ -145,12 +145,43 @@ export async function setTurnTimeSec(roomId: string, turnTimeSec: number): Promi
   if (error) throw error;
 }
 
-export async function startGame(roomId: string): Promise<void> {
-  const { error } = await supabase
+/** 방장이 시작을 누른 순간 호출: 참가자들의 게임 상태를 초기화하고 방을 진행중으로 바꾼다.
+ * players를 먼저 세팅한 뒤 rooms를 마지막에 바꿔서, 다른 클라이언트가 status==='playing'을
+ * 보고 반응할 때는 이미 players 초기화가 끝나 있게 한다. */
+export async function startGame(roomId: string, players: LobbyPlayer[]): Promise<void> {
+  const orderedPlayers = [...players].sort((a, b) => a.seat_order - b.seat_order);
+  const firstPlayer = orderedPlayers[0];
+  if (!firstPlayer) throw new LobbyError('참가자가 없습니다.');
+
+  const { error: resetError } = await supabase
+    .from('players')
+    .update({
+      balance: STARTING_BALANCE,
+      position: START_TILE_IDX,
+      is_bankrupt: false,
+      skip_next_turn: false,
+    })
+    .eq('room_id', roomId);
+  if (resetError) throw resetError;
+
+  const { error: roomError } = await supabase
     .from('rooms')
-    .update({ status: 'playing', turn_number: 1, turn_started_at: new Date().toISOString() })
+    .update({
+      status: 'playing',
+      phase: 'awaiting-roll',
+      current_player_id: firstPlayer.id,
+      turn_number: 1,
+      turn_started_at: new Date().toISOString(),
+      last_roll_d1: null,
+      last_roll_d2: null,
+      is_double_roll: false,
+      pending_purchase_tile_idx: null,
+      winner_player_id: null,
+      notice: null,
+      version: 0,
+    })
     .eq('id', roomId);
-  if (error) throw error;
+  if (roomError) throw roomError;
 }
 
 /** 로비를 나간다. 방장이 나가면 남은 사람 중 가장 먼저 들어온 사람에게 방장을 넘기고,
@@ -182,7 +213,8 @@ export async function leaveRoom(room: RoomRow, player: LobbyPlayer): Promise<voi
   }
 }
 
-/** 새로고침/재실행 후에도 아직 시작하지 않은 내 방이 있으면 찾아서 돌려준다. */
+/** 새로고침/재실행 후에도 아직 끝나지 않은(waiting 또는 playing) 내 방이 있으면 찾아서 돌려준다.
+ * finished인 방은 제외 — 승리 화면에서 새로고침하면 그냥 메인 화면으로 떨어진다(의도된 단순화). */
 export async function findActiveLobbyForClient(): Promise<{
   room: RoomRow;
   player: LobbyPlayer;
@@ -193,7 +225,7 @@ export async function findActiveLobbyForClient(): Promise<{
     .from('players')
     .select('*, rooms!inner(*)')
     .eq('client_id', clientId)
-    .eq('rooms.status', 'waiting')
+    .in('rooms.status', ['waiting', 'playing'])
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

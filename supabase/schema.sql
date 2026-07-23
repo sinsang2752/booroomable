@@ -31,23 +31,38 @@ create table if not exists players (
   seat_order int not null,
   is_connected boolean not null default true,
   is_ready boolean not null default false,
+  skip_next_turn boolean not null default false,
   created_at timestamptz not null default now()
 );
 
 -- 기존에 스키마를 먼저 실행한 적이 있어도 안전하게 컬럼만 추가되도록.
 alter table players add column if not exists is_ready boolean not null default false;
+alter table players add column if not exists skip_next_turn boolean not null default false;
+
+-- 게임 상태 동기화(진행 중인 방의 턴/주사위/구매대기/승자 등)를 위한 rooms 컬럼.
+alter table rooms add column if not exists phase text not null default 'awaiting-roll';
+alter table rooms add column if not exists last_roll_d1 int;
+alter table rooms add column if not exists last_roll_d2 int;
+alter table rooms add column if not exists is_double_roll boolean not null default false;
+alter table rooms add column if not exists pending_purchase_tile_idx int;
+alter table rooms add column if not exists winner_player_id uuid;
+alter table rooms add column if not exists notice text;
+-- 낙관적 동시성 가드: 액션을 처리할 때마다 1씩 증가시키고, 쓸 때 이 값이 그대로인지 확인한다.
+alter table rooms add column if not exists version int not null default 0;
 
 -- 동시 참가 시 좌석 번호/같은 사람 중복 참가 방지.
+-- (unique 제약은 내부적으로 같은 이름의 인덱스를 만들어서, 이미 있으면
+-- duplicate_object가 아니라 duplicate_table로 걸리는 경우가 있어 둘 다 잡아준다.)
 do $$
 begin
   alter table players add constraint players_room_seat_unique unique (room_id, seat_order);
-exception when duplicate_object then null;
+exception when duplicate_object or duplicate_table then null;
 end $$;
 
 do $$
 begin
   alter table players add constraint players_room_client_unique unique (room_id, client_id);
-exception when duplicate_object then null;
+exception when duplicate_object or duplicate_table then null;
 end $$;
 
 -- tiles: 40칸 보드 고정 마스터 데이터 (모든 방이 공유)
@@ -68,6 +83,13 @@ create table if not exists ownerships (
   player_id uuid not null references players (id) on delete cascade,
   level int not null default 0
 );
+
+-- 같은 방의 같은 칸을 두 번 구매(중복 insert)하는 것 방지.
+do $$
+begin
+  alter table ownerships add constraint ownerships_room_tile_unique unique (room_id, tile_idx);
+exception when duplicate_object or duplicate_table then null;
+end $$;
 
 -- chat_messages: 실시간은 Broadcast로 전파, 이 테이블은 로그 다시보기용 (선택 기능)
 create table if not exists chat_messages (

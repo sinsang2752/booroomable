@@ -6,12 +6,11 @@ import { MainScreen } from './components/MainScreen';
 import { NicknameScreen } from './components/NicknameScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { TurnPanel } from './components/TurnPanel';
-import { useGame } from './hooks/useGame';
 import { useLobby } from './hooks/useLobby';
 import { useRoomChat } from './hooks/useRoomChat';
+import { useSyncedGame } from './hooks/useSyncedGame';
 import { getClientId, getStoredNickname, setStoredNickname } from './lib/identity';
 import { createRoom, findActiveLobbyForClient, joinRoomByCode } from './lobby/api';
-import type { GameRosterEntry } from './lobby/types';
 
 type Screen = 'loading' | 'nickname' | 'main' | 'lobby' | 'game';
 
@@ -19,26 +18,23 @@ const BUBBLE_DURATION_MS = 3500;
 
 interface GameScreenProps {
   roomId: string;
-  roster: GameRosterEntry[];
   onRestart: () => void;
 }
 
-function GameScreen({ roomId, roster, onRestart }: GameScreenProps) {
+function GameScreen({ roomId, onRestart }: GameScreenProps) {
   const clientId = useMemo(() => getClientId(), []);
-  const playerNames = useMemo(() => roster.map((r) => r.nickname), [roster]);
-  const myNickname = roster.find((r) => r.clientId === clientId)?.nickname ?? '';
-
-  const { state, rollDice, decidePurchase } = useGame(playerNames);
+  const { state, dbPlayers, loading, error, isMyTurn, isSubmitting, rollDice, decidePurchase } =
+    useSyncedGame(roomId);
+  const myNickname = dbPlayers.find((p) => p.client_id === clientId)?.nickname ?? '';
   const { messages, sendMessage } = useRoomChat(roomId, clientId, myNickname);
 
   const enginePlayerIdByClientId = useMemo(() => {
     const map: Record<string, string> = {};
-    state.players.forEach((p, i) => {
-      const entry = roster[i];
-      if (entry) map[entry.clientId] = p.id;
+    dbPlayers.forEach((p) => {
+      map[p.client_id] = p.id;
     });
     return map;
-  }, [state.players, roster]);
+  }, [dbPlayers]);
 
   const [bubbles, setBubbles] = useState<Record<string, string>>({});
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -72,6 +68,18 @@ function GameScreen({ roomId, roster, onRestart }: GameScreenProps) {
     [],
   );
 
+  if (error) {
+    return (
+      <div className="game-screen">
+        <p className="error-text">{error}</p>
+      </div>
+    );
+  }
+
+  if (loading || !state) {
+    return <div className="loading-screen">불러오는 중...</div>;
+  }
+
   const winner = state.players.find((p) => p.id === state.winnerId) ?? null;
 
   return (
@@ -81,7 +89,13 @@ function GameScreen({ roomId, roster, onRestart }: GameScreenProps) {
           <ResultScreen winnerName={winner?.name ?? null} onRestart={onRestart} />
         ) : (
           <>
-            <TurnPanel state={state} onRoll={rollDice} onDecide={decidePurchase} />
+            <TurnPanel
+              state={state}
+              isMyTurn={isMyTurn}
+              isSubmitting={isSubmitting}
+              onRoll={rollDice}
+              onDecide={decidePurchase}
+            />
             <input
               type="text"
               className="game-chat-input"
@@ -103,7 +117,7 @@ function GameScreen({ roomId, roster, onRestart }: GameScreenProps) {
 
 interface LobbyContainerProps {
   roomId: string;
-  onGameStart: (roster: GameRosterEntry[]) => void;
+  onGameStart: () => void;
   onLeave: () => void;
 }
 
@@ -160,7 +174,6 @@ function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [nickname, setNickname] = useState('');
   const [roomId, setRoomId] = useState<string | null>(null);
-  const [roster, setRoster] = useState<GameRosterEntry[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,7 +185,7 @@ function App() {
         if (active) {
           setNickname(active.player.nickname);
           setRoomId(active.room.id);
-          setScreen('lobby');
+          setScreen(active.room.status === 'playing' ? 'game' : 'lobby');
           return;
         }
       } catch {
@@ -212,8 +225,7 @@ function App() {
     setScreen('lobby');
   }
 
-  function handleGameStart(newRoster: GameRosterEntry[]) {
-    setRoster(newRoster);
+  function handleGameStart() {
     setScreen('game');
   }
 
@@ -241,7 +253,7 @@ function App() {
   }
 
   if (roomId) {
-    return <GameScreen roomId={roomId} roster={roster} onRestart={handleRestart} />;
+    return <GameScreen roomId={roomId} onRestart={handleRestart} />;
   }
 
   return null;
