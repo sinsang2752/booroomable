@@ -7,6 +7,10 @@ export const TOP_ROW_LENGTH = 19;
 export const BOTTOM_ROW_LENGTH = 19;
 export const START_TILE_IDX = 0;
 export const JAIL_TILE_IDX = 20;
+/** 무인도 대기 턴 수(원작 그대로 3턴, 도중 더블이면 즉시 탈출). */
+export const JAIL_TURNS = 3;
+/** 이 값만큼 더블을 연속으로 굴리면 무인도로 강제 이동(무한 더블 방지). */
+export const CONSECUTIVE_DOUBLES_LIMIT = 3;
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;

@@ -71,7 +71,7 @@ async function applyPatches(
           position: patch.position,
           balance: patch.balance,
           is_bankrupt: patch.is_bankrupt,
-          skip_next_turn: patch.skip_next_turn,
+          jail_turns_left: patch.jail_turns_left,
         })
         .eq('id', patch.id),
     ),
@@ -140,7 +140,7 @@ async function handleStartGame(supabase: SupabaseClient, roomId: string, clientI
       balance: STARTING_BALANCE,
       position: START_TILE_IDX,
       is_bankrupt: false,
-      skip_next_turn: false,
+      jail_turns_left: 0,
     })
     .eq('room_id', roomId);
   if (resetError) return jsonResponse({ error: resetError.message }, 500);
@@ -159,6 +159,7 @@ async function handleStartGame(supabase: SupabaseClient, roomId: string, clientI
       pending_purchase_tile_idx: null,
       event_deck: [],
       welfare_pool: 0,
+      consecutive_doubles: 0,
       winner_player_id: null,
       notice: null,
       version: 0,

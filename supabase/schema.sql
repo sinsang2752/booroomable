@@ -214,3 +214,10 @@ alter table rooms add column if not exists event_deck jsonb;
 
 -- 3단계 사회복지기금: 적립액. 위와 동일한 이유로 별도 GRANT 불필요(Edge Function만 씀).
 alter table rooms add column if not exists welfare_pool int not null default 0;
+
+-- 3단계 무인도 확장: 남은 대기 턴 수(0=무인도 아님, 3부터 카운트다운). 기존 skip_next_turn
+-- (1턴 스킵)을 대체 — 컬럼은 되돌리기 어려운 DROP 대신 그대로 두고 코드에서만 새 컬럼을 쓴다.
+alter table players add column if not exists jail_turns_left int not null default 0;
+
+-- 3단계 더블 3연속 판정용. 턴이 실제로 다음 사람에게 넘어갈 때마다 0으로 리셋.
+alter table rooms add column if not exists consecutive_doubles int not null default 0;

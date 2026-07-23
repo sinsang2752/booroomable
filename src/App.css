@@ -357,6 +357,11 @@
   font-size: 9px;
   color: var(--color-red);
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.player-token-badge--jail {
+  color: var(--color-blue);
 }
 
 .player-token-bubble {

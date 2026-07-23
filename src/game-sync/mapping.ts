@@ -29,7 +29,7 @@ export function dbToGameState(
       position: p.position,
       balance: p.balance,
       isBankrupt: p.is_bankrupt,
-      skipNextTurn: p.skip_next_turn,
+      jailTurnsLeft: p.jail_turns_left,
     })),
     currentPlayerIndex: currentPlayerIndex === -1 ? 0 : currentPlayerIndex,
     tileOwners,
@@ -42,6 +42,7 @@ export function dbToGameState(
     pendingPurchaseTileIdx: room.pending_purchase_tile_idx,
     eventDeck: room.event_deck ?? [],
     welfarePool: room.welfare_pool,
+    consecutiveDoubles: room.consecutive_doubles,
     winnerId: room.winner_player_id,
     turnNumber: room.turn_number,
     notice: room.notice,
@@ -59,6 +60,7 @@ export interface RoomPatch {
   pending_purchase_tile_idx: number | null;
   event_deck: number[];
   welfare_pool: number;
+  consecutive_doubles: number;
   winner_player_id: string | null;
   notice: string | null;
 }
@@ -68,7 +70,7 @@ export interface PlayerPatch {
   position: number;
   balance: number;
   is_bankrupt: boolean;
-  skip_next_turn: boolean;
+  jail_turns_left: number;
 }
 
 export interface OwnershipPatch {
@@ -99,6 +101,7 @@ export function computePatches(oldState: GameState, newState: GameState): GameSt
     pending_purchase_tile_idx: newState.pendingPurchaseTileIdx,
     event_deck: newState.eventDeck,
     welfare_pool: newState.welfarePool,
+    consecutive_doubles: newState.consecutiveDoubles,
     winner_player_id: newState.winnerId,
     notice: newState.notice,
   };
@@ -108,7 +111,7 @@ export function computePatches(oldState: GameState, newState: GameState): GameSt
     position: p.position,
     balance: p.balance,
     is_bankrupt: p.isBankrupt,
-    skip_next_turn: p.skipNextTurn,
+    jail_turns_left: p.jailTurnsLeft,
   }));
 
   const ownershipUpserts: OwnershipPatch[] = [];

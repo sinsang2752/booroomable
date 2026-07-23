@@ -34,7 +34,8 @@ export interface Player {
   position: number;
   balance: number;
   isBankrupt: boolean;
-  skipNextTurn: boolean;
+  /** 0이면 무인도 아님. 1 이상이면 남은 대기 턴 수(무인도 도착 시 JAIL_TURNS로 설정). */
+  jailTurnsLeft: number;
 }
 
 export interface GameState {
@@ -53,6 +54,8 @@ export interface GameState {
   eventDeck: number[];
   /** 사회복지기금 적립액. welfare_pay 칸에서 쌓이고 welfare_get 칸에서 전액 수령. */
   welfarePool: number;
+  /** 현재 플레이어가 이번 턴 체인에서 연속으로 굴린 더블 횟수. 턴이 다음 사람에게 넘어가면 0으로 리셋. */
+  consecutiveDoubles: number;
   winnerId: string | null;
   turnNumber: number;
   notice: string | null;

@@ -25,6 +25,9 @@ export function PlayerToken({ player, stackIndex, stackCount, bubbleText }: Play
       <span className="player-token-initial">{player.name.slice(0, 1)}</span>
       <span className="player-token-balance">{player.balance}</span>
       {player.isBankrupt && <span className="player-token-badge">탈락</span>}
+      {!player.isBankrupt && player.jailTurnsLeft > 0 && (
+        <span className="player-token-badge player-token-badge--jail">무인도 {player.jailTurnsLeft}</span>
+      )}
       {bubbleText && <span className="player-token-bubble">{bubbleText}</span>}
     </div>
   );

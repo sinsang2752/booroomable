@@ -12,9 +12,11 @@ import {
   BOARD_SIZE,
   BUILDING_LEVEL_NAMES,
   BUILDING_TOLL_LEVEL_MULTIPLIERS,
+  CONSECUTIVE_DOUBLES_LIMIT,
   DICE_SIDES,
   GOLDEN_KEY_DECK,
   JAIL_TILE_IDX,
+  JAIL_TURNS,
   PLAYER_COLORS,
   SALARY_ON_PASS_START,
   START_TILE_IDX,
@@ -48,7 +50,7 @@ export function createInitialState(names: string[]): GameState {
     position: START_TILE_IDX,
     balance: STARTING_BALANCE,
     isBankrupt: false,
-    skipNextTurn: false,
+    jailTurnsLeft: 0,
   }));
 
   return {
@@ -62,6 +64,7 @@ export function createInitialState(names: string[]): GameState {
     pendingPurchaseTileIdx: null,
     eventDeck: [],
     welfarePool: 0,
+    consecutiveDoubles: 0,
     winnerId: null,
     turnNumber: 1,
     notice: null,
@@ -125,8 +128,8 @@ function resolveTileLanding(
   let notice: string | null = null;
 
   if (tile.type === 'jail') {
-    currentPlayer.skipNextTurn = true;
-    notice = `${currentPlayer.name}님이 무인도에 도착해 다음 턴을 쉽니다.`;
+    currentPlayer.jailTurnsLeft = JAIL_TURNS;
+    notice = `${currentPlayer.name}님이 무인도에 도착해 ${JAIL_TURNS}턴을 쉽니다. (더블이 나오면 즉시 탈출)`;
   } else if (tile.type === 'empty_land') {
     const ownerId = tileOwners[tileIdx];
     const level = tileLevels[tileIdx];
@@ -367,6 +370,91 @@ function resolveTileLanding(
   return { tileOwners, tileLevels, eventDeck, welfarePool, phase, pendingPurchaseTileIdx, notice };
 }
 
+/** 무인도 대기 중인 플레이어가 자기 턴에 주사위를 굴렀을 때의 처리.
+ * 더블이면 즉시 탈출, 아니면 대기 턴을 하나 줄이고(3번째 실패면 그대로 강제 석방) 이동한다.
+ * 탈출/석방 이동은 resolveTileLanding을 재사용해 도착 칸 효과를 정상 적용하되, 보너스 재굴림은 절대 없다. */
+function handleJailRoll(
+  state: GameState,
+  players: Player[],
+  currentPlayer: Player,
+  d1: number,
+  d2: number,
+  isDouble: boolean,
+): GameState {
+  if (!isDouble) {
+    currentPlayer.jailTurnsLeft -= 1;
+    if (currentPlayer.jailTurnsLeft > 0) {
+      return finishTurnStep(
+        {
+          ...state,
+          players,
+          lastRoll: [d1, d2],
+          isDoubleRoll: false,
+          consecutiveDoubles: 0,
+          notice: `${currentPlayer.name}님이 무인도에서 대기 중입니다. (남은 턴 ${currentPlayer.jailTurnsLeft})`,
+        },
+        false,
+      );
+    }
+  }
+
+  const escapeNotice = isDouble
+    ? `${currentPlayer.name}님이 더블을 굴려 무인도에서 탈출했습니다!`
+    : `${currentPlayer.name}님이 무인도 대기가 끝나 나왔습니다.`;
+
+  currentPlayer.jailTurnsLeft = 0;
+
+  const sum = d1 + d2;
+  const rawNewPos = currentPlayer.position + sum;
+  const wrapped = rawNewPos >= BOARD_SIZE;
+  const newPos = rawNewPos % BOARD_SIZE;
+  currentPlayer.position = newPos;
+
+  let salaryNotice = '';
+  if (wrapped) {
+    currentPlayer.balance += SALARY_ON_PASS_START;
+    salaryNotice = ` 출발지를 지나 월급 ${SALARY_ON_PASS_START}을 받았습니다.`;
+  }
+
+  const landing = resolveTileLanding(
+    players,
+    currentPlayer,
+    newPos,
+    state.tileOwners,
+    state.tileLevels,
+    state.eventDeck,
+    state.welfarePool,
+    wrapped && newPos === START_TILE_IDX,
+    true,
+  );
+
+  const rolledState: GameState = {
+    ...state,
+    players,
+    tileOwners: landing.tileOwners,
+    tileLevels: landing.tileLevels,
+    eventDeck: landing.eventDeck,
+    welfarePool: landing.welfarePool,
+    lastRoll: [d1, d2],
+    isDoubleRoll: false,
+    consecutiveDoubles: 0,
+    phase: landing.phase,
+    pendingPurchaseTileIdx: landing.pendingPurchaseTileIdx,
+    notice: landing.notice ? `${escapeNotice} ${landing.notice}` : `${escapeNotice}${salaryNotice}`,
+  };
+
+  if (
+    rolledState.phase === 'awaiting-purchase-decision' ||
+    rolledState.phase === 'awaiting-build-decision' ||
+    rolledState.phase === 'awaiting-start-bonus-build' ||
+    rolledState.phase === 'awaiting-space-travel-destination'
+  ) {
+    return rolledState;
+  }
+
+  return finishTurnStep(rolledState, false);
+}
+
 function handleRollDice(state: GameState): GameState {
   if (state.phase !== 'awaiting-roll') return state;
 
@@ -377,6 +465,30 @@ function handleRollDice(state: GameState): GameState {
 
   const players = state.players.map((p) => ({ ...p }));
   const currentPlayer = players[state.currentPlayerIndex];
+
+  if (currentPlayer.jailTurnsLeft > 0) {
+    return handleJailRoll(state, players, currentPlayer, d1, d2, isDouble);
+  }
+
+  const newConsecutiveDoubles = isDouble ? state.consecutiveDoubles + 1 : 0;
+
+  if (newConsecutiveDoubles >= CONSECUTIVE_DOUBLES_LIMIT) {
+    // 더블 3연속: 텔레포트라 이동 도중 출발점을 "지나치는" 개념 자체가 없음 -> 월급 없음(CLAUDE.md 명시).
+    currentPlayer.position = JAIL_TILE_IDX;
+    currentPlayer.jailTurnsLeft = JAIL_TURNS;
+    return finishTurnStep(
+      {
+        ...state,
+        players,
+        lastRoll: [d1, d2],
+        isDoubleRoll: false,
+        consecutiveDoubles: 0,
+        phase: 'awaiting-roll',
+        notice: `${currentPlayer.name}님이 더블을 ${CONSECUTIVE_DOUBLES_LIMIT}번 연속 굴려 무인도로 강제 이동되었습니다.`,
+      },
+      false,
+    );
+  }
 
   const rawNewPos = currentPlayer.position + sum;
   const wrapped = rawNewPos >= BOARD_SIZE;
@@ -402,6 +514,10 @@ function handleRollDice(state: GameState): GameState {
     true,
   );
 
+  // 방금 이 착지(직접 도착 또는 황금열쇠 이동 카드)로 무인도에 막 들어갔다면, 원래 이 턴은 일반
+  // 더블 재굴림 대상이 아니었으므로 보너스 재굴림/연속더블 카운트를 강제로 지운다.
+  const justEnteredJail = currentPlayer.jailTurnsLeft > 0;
+
   const rolledState: GameState = {
     ...state,
     players,
@@ -410,7 +526,8 @@ function handleRollDice(state: GameState): GameState {
     eventDeck: landing.eventDeck,
     welfarePool: landing.welfarePool,
     lastRoll: [d1, d2],
-    isDoubleRoll: isDouble,
+    isDoubleRoll: justEnteredJail ? false : isDouble,
+    consecutiveDoubles: justEnteredJail ? 0 : newConsecutiveDoubles,
     phase: landing.phase,
     pendingPurchaseTileIdx: landing.pendingPurchaseTileIdx,
     notice: landing.notice ?? notice,
@@ -425,7 +542,7 @@ function handleRollDice(state: GameState): GameState {
     return rolledState;
   }
 
-  return finishTurnStep(rolledState, isDouble);
+  return finishTurnStep(rolledState, rolledState.isDoubleRoll);
 }
 
 /** 최초 구매 직후 감당되는 최고 등급까지 한 번에 골라 지을 수 있게 프롬프트를 띄우는 헬퍼(handleDecidePurchase 전용).
@@ -729,13 +846,6 @@ function advanceToNextPlayer(state: GameState): GameState {
       continue;
     }
 
-    if (candidate.skipNextTurn) {
-      candidate.skipNextTurn = false;
-      candidateIndex = (candidateIndex + 1) % n;
-      iterations += 1;
-      continue;
-    }
-
     break;
   }
 
@@ -745,5 +855,6 @@ function advanceToNextPlayer(state: GameState): GameState {
     currentPlayerIndex: candidateIndex,
     phase: 'awaiting-roll',
     turnNumber: state.turnNumber + 1,
+    consecutiveDoubles: 0,
   };
 }

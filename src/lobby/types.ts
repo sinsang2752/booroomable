@@ -22,6 +22,7 @@ export interface RoomRow {
   pending_purchase_tile_idx: number | null;
   event_deck: number[] | null;
   welfare_pool: number;
+  consecutive_doubles: number;
   winner_player_id: string | null;
   notice: string | null;
   version: number;
@@ -49,7 +50,7 @@ export interface GamePlayerRow {
   position: number;
   balance: number;
   is_bankrupt: boolean;
-  skip_next_turn: boolean;
+  jail_turns_left: number;
 }
 
 export interface OwnershipRow {
