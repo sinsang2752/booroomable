@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BOARD } from '../game/board';
-import { getCumulativeUpgradeCost, getMaxAffordableLevel } from '../game/buildings';
-import { BUILDING_LEVEL_NAMES, BUILDING_UPGRADE_COST_RATIOS } from '../game/config';
+import { getCumulativeUpgradeCost, getMaxAffordableLevel, getUpgradeCost } from '../game/buildings';
+import { BUILDING_LEVEL_NAMES } from '../game/config';
 import type { GameState } from '../game/types';
 
 interface TurnPanelProps {
@@ -52,9 +52,7 @@ export function TurnPanel({
   const pendingIdx = state.pendingPurchaseTileIdx;
   const pendingTile = pendingIdx !== null ? BOARD[pendingIdx] : null;
   const pendingTileLevel = pendingIdx !== null ? state.tileLevels[pendingIdx] : 0;
-  const buildCost = pendingTile
-    ? Math.round((pendingTile.price ?? 0) * BUILDING_UPGRADE_COST_RATIOS[pendingTileLevel])
-    : 0;
+  const buildCost = pendingIdx !== null ? (getUpgradeCost(pendingIdx, pendingTileLevel) ?? 0) : 0;
   const nextLevelName = BUILDING_LEVEL_NAMES[pendingTileLevel + 1];
 
   const initialBuildOptions =

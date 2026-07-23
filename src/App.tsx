@@ -171,7 +171,22 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
               />
             )}
           </Board>
-          {state.phase !== 'game-over' && (
+        </div>
+        {state.phase !== 'game-over' && (
+          <div className="right-column">
+            <TurnPanel
+              state={state}
+              isMyTurn={isMyTurn}
+              isEliminated={isEliminated}
+              isSubmitting={isSubmitting}
+              onRoll={rollDice}
+              onDecide={decidePurchase}
+              onDecideBuild={decideBuild}
+              onDecideInitialBuild={decideInitialBuild}
+              onSkipStartBonusBuild={() => decideStartBonusBuild(null)}
+              onSkipSpaceTravel={() => decideSpaceTravel(null)}
+              onForfeit={forfeit}
+            />
             <input
               type="text"
               className="game-chat-input"
@@ -184,22 +199,7 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
                 target.value = '';
               }}
             />
-          )}
-        </div>
-        {state.phase !== 'game-over' && (
-          <TurnPanel
-            state={state}
-            isMyTurn={isMyTurn}
-            isEliminated={isEliminated}
-            isSubmitting={isSubmitting}
-            onRoll={rollDice}
-            onDecide={decidePurchase}
-            onDecideBuild={decideBuild}
-            onDecideInitialBuild={decideInitialBuild}
-            onSkipStartBonusBuild={() => decideStartBonusBuild(null)}
-            onSkipSpaceTravel={() => decideSpaceTravel(null)}
-            onForfeit={forfeit}
-          />
+          </div>
         )}
       </div>
     </div>
@@ -265,6 +265,12 @@ function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [nickname, setNickname] = useState('');
   const [roomId, setRoomId] = useState<string | null>(null);
+
+  // 닉네임/메인/로비는 작은 창, 게임 화면은 넓은 창 — Electron에서만 존재하는 API라
+  // 일반 브라우저 탭에서는 아무 일도 안 일어난다(electron/preload.cjs 참고).
+  useEffect(() => {
+    window.electronAPI?.resizeWindow(screen === 'game' ? 'game' : 'compact');
+  }, [screen]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,17 +1,31 @@
 import { BOARD } from './board.ts';
 import {
   BUILDING_SALE_RATIO,
-  BUILDING_UPGRADE_COST_RATIOS,
+  BUILDING_TOLL_LEVEL_MULTIPLIERS,
   LAND_SALE_RATIO,
   MAX_BUILDING_LEVEL,
+  ZONE_BUILD_COST,
 } from './config.ts';
 import type { GameState } from './types.ts';
 
-/** 다음 레벨로 올리는 데 드는 건설비. 이미 최고 레벨이면 null(더 지을 수 없음). */
-export function getUpgradeCost(tileIdx: number, level: number): number | null {
-  if (level >= MAX_BUILDING_LEVEL) return null;
+/** 그 칸에 지금 도착하면 내야 할 통행료(landmark는 고정값, 그 외엔 등급별 배율 적용) —
+ * 유일한 계산 지점. engine.ts의 실제 징수와 Tile.tsx의 표시 둘 다 이 함수를 통해야 한다. */
+export function getCurrentToll(tileIdx: number, level: number): number {
   const tile = BOARD[tileIdx];
-  return Math.round((tile.price ?? 0) * BUILDING_UPGRADE_COST_RATIOS[level]);
+  return (tile.toll ?? 0) * BUILDING_TOLL_LEVEL_MULTIPLIERS[level];
+}
+
+/** 다음 레벨로 올리는 데 드는 건설비. landmark는 건물 자체가 불가능해 항상 null.
+ * 이미 최고 레벨이어도 null(더 지을 수 없음). 건설비는 땅값이 아니라 구역별 고정값
+ * (ZONE_BUILD_COST, CLAUDE.md "건설비: 구역별 고정" 참고) — 별장1/별장2(level 0,1)는 같은 금액. */
+export function getUpgradeCost(tileIdx: number, level: number): number | null {
+  const tile = BOARD[tileIdx];
+  if (tile.type === 'landmark') return null;
+  if (level >= MAX_BUILDING_LEVEL) return null;
+  const zone = ZONE_BUILD_COST[Math.floor(tileIdx / 10)];
+  if (level === 0 || level === 1) return zone.villa;
+  if (level === 2) return zone.building;
+  return zone.hotel;
 }
 
 /** 특정 칸을 지금 잔액으로 업그레이드할 수 있는지 (레벨 MAX 여부 + 비용 감당 여부). */

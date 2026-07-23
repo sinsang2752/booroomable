@@ -1,6 +1,7 @@
 import { BOARD } from './board.ts';
 import {
   getCumulativeUpgradeCost,
+  getCurrentToll,
   getMaxAffordableLevel,
   getMostValuableOwnedTile,
   getPropertyValue,
@@ -11,7 +12,6 @@ import {
 import {
   BOARD_SIZE,
   BUILDING_LEVEL_NAMES,
-  BUILDING_TOLL_LEVEL_MULTIPLIERS,
   CONSECUTIVE_DOUBLES_LIMIT,
   DICE_SIDES,
   GOLDEN_KEY_DECK,
@@ -130,7 +130,7 @@ function resolveTileLanding(
   if (tile.type === 'jail') {
     currentPlayer.jailTurnsLeft = JAIL_TURNS;
     notice = `${currentPlayer.name}님이 무인도에 도착해 ${JAIL_TURNS}턴을 쉽니다. (더블이 나오면 즉시 탈출)`;
-  } else if (tile.type === 'empty_land') {
+  } else if (tile.type === 'empty_land' || tile.type === 'landmark') {
     const ownerId = tileOwners[tileIdx];
     const level = tileLevels[tileIdx];
 
@@ -147,7 +147,7 @@ function resolveTileLanding(
         notice = `${currentPlayer.name}님, ${tile.name}을(를) ${nextLevelName}(으)로 업그레이드하시겠습니까? (${upgradeCost})`;
       }
     } else if (ownerId) {
-      const toll = (tile.toll ?? 0) * BUILDING_TOLL_LEVEL_MULTIPLIERS[level];
+      const toll = getCurrentToll(tileIdx, level);
       let liquidationNotice = '';
 
       if (currentPlayer.balance < toll) {

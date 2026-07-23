@@ -102,47 +102,51 @@ create table if not exists chat_messages (
 
 -- tiles 시드 데이터: src/game/board.ts·config.ts 공식과 동일한 값
 -- (초기자본 1500 / 땅값 100부터 20씩 증가 / 통행료는 땅값의 20%)
+-- 참고: idx 5/10/15/18/25/30/35는 여기서 'empty_land'로 심어져 있지만 실제로는 board.ts 기준
+-- 황금열쇠/기금/우주여행 특수칸이다(2단계 시드 이후 board.ts에 3단계 특수칸이 추가되면서 어긋남).
+-- 클라이언트가 이 테이블을 아직 안 읽어서 지금은 영향 없음 — 나중에 DB를 실제로 읽도록
+-- 마이그레이션할 때 타입까지 같이 바로잡을 것. 이번엔 이름만 board.ts와 맞춘다.
 insert into tiles (idx, name, type, price, toll, color_group) values
 (0, '출발', 'start', NULL, NULL, NULL),
-(1, '땅 1', 'empty_land', 100, 20, NULL),
-(2, '땅 2', 'empty_land', 120, 24, NULL),
-(3, '땅 3', 'empty_land', 140, 28, NULL),
-(4, '땅 4', 'empty_land', 160, 32, NULL),
+(1, '하노이', 'empty_land', 100, 20, NULL),
+(2, '자카르타', 'empty_land', 120, 24, NULL),
+(3, '마닐라', 'empty_land', 140, 28, NULL),
+(4, '방콕', 'empty_land', 160, 32, NULL),
 (5, '땅 5', 'empty_land', 180, 36, NULL),
-(6, '땅 6', 'empty_land', 200, 40, NULL),
-(7, '땅 7', 'empty_land', 220, 44, NULL),
-(8, '땅 8', 'empty_land', 240, 48, NULL),
-(9, '땅 9', 'empty_land', 260, 52, NULL),
+(6, '쿠알라룸푸르', 'empty_land', 200, 40, NULL),
+(7, '타이베이', 'empty_land', 220, 44, NULL),
+(8, '마카오', 'empty_land', 240, 48, NULL),
+(9, '제주도', 'empty_land', 260, 52, NULL),
 (10, '땅 10', 'empty_land', 280, 56, NULL),
-(11, '땅 11', 'empty_land', 300, 60, NULL),
-(12, '땅 12', 'empty_land', 320, 64, NULL),
-(13, '땅 13', 'empty_land', 340, 68, NULL),
-(14, '땅 14', 'empty_land', 360, 72, NULL),
+(11, '아테네', 'empty_land', 300, 60, NULL),
+(12, '프라하', 'empty_land', 320, 64, NULL),
+(13, '리스본', 'empty_land', 340, 68, NULL),
+(14, '바르샤바', 'empty_land', 360, 72, NULL),
 (15, '땅 15', 'empty_land', 380, 76, NULL),
-(16, '땅 16', 'empty_land', 400, 80, NULL),
-(17, '땅 17', 'empty_land', 420, 84, NULL),
+(16, '코펜하겐', 'empty_land', 400, 80, NULL),
+(17, '스톡홀름', 'empty_land', 420, 84, NULL),
 (18, '땅 18', 'empty_land', 440, 88, NULL),
-(19, '땅 19', 'empty_land', 460, 92, NULL),
+(19, '하와이', 'empty_land', 460, 92, NULL),
 (20, '무인도', 'jail', NULL, NULL, NULL),
-(21, '땅 20', 'empty_land', 480, 96, NULL),
-(22, '땅 21', 'empty_land', 500, 100, NULL),
-(23, '땅 22', 'empty_land', 520, 104, NULL),
-(24, '땅 23', 'empty_land', 540, 108, NULL),
+(21, '부에노스아이레스', 'empty_land', 480, 96, NULL),
+(22, '상파울루', 'empty_land', 500, 100, NULL),
+(23, '시드니', 'empty_land', 520, 104, NULL),
+(24, '멜버른', 'empty_land', 540, 108, NULL),
 (25, '땅 24', 'empty_land', 560, 112, NULL),
-(26, '땅 25', 'empty_land', 580, 116, NULL),
-(27, '땅 26', 'empty_land', 600, 120, NULL),
-(28, '땅 27', 'empty_land', 620, 124, NULL),
-(29, '땅 28', 'empty_land', 640, 128, NULL),
+(26, '두바이', 'empty_land', 580, 116, NULL),
+(27, '바르셀로나', 'empty_land', 600, 120, NULL),
+(28, '산토리니', 'empty_land', 620, 124, NULL),
+(29, '부산', 'empty_land', 640, 128, NULL),
 (30, '땅 29', 'empty_land', 660, 132, NULL),
-(31, '땅 30', 'empty_land', 680, 136, NULL),
-(32, '땅 31', 'empty_land', 700, 140, NULL),
-(33, '땅 32', 'empty_land', 720, 144, NULL),
-(34, '땅 33', 'empty_land', 740, 148, NULL),
+(31, '베를린', 'empty_land', 680, 136, NULL),
+(32, '로마', 'empty_land', 700, 140, NULL),
+(33, '도쿄', 'empty_land', 720, 144, NULL),
+(34, '파리', 'empty_land', 740, 148, NULL),
 (35, '땅 34', 'empty_land', 760, 152, NULL),
-(36, '땅 35', 'empty_land', 780, 156, NULL),
-(37, '땅 36', 'empty_land', 800, 160, NULL),
-(38, '땅 37', 'empty_land', 820, 164, NULL),
-(39, '땅 38', 'empty_land', 840, 168, NULL)
+(36, '런던', 'empty_land', 780, 156, NULL),
+(37, '뉴욕', 'empty_land', 800, 160, NULL),
+(38, '나이아가라', 'empty_land', 820, 164, NULL),
+(39, '서울', 'empty_land', 840, 168, NULL)
 on conflict (idx) do nothing;
 
 -- 이후 Postgres Changes 구독(상태 동기화)에 쓰일 테이블만 리얼타임 복제를 켜둔다.
@@ -221,3 +225,23 @@ alter table players add column if not exists jail_turns_left int not null defaul
 
 -- 3단계 더블 3연속 판정용. 턴이 실제로 다음 사람에게 넘어갈 때마다 0으로 리셋.
 alter table rooms add column if not exists consecutive_doubles int not null default 0;
+
+-- 3단계 원작 재분석: 땅 이름을 실제 지역명으로 교체(CLAUDE.md "보드 칸 구성" 표 그대로).
+-- 가격/타입/인덱스는 이번 단계에서 안 건드림 — name 컬럼만 바뀐다.
+-- idx 5/10/15/18/25/30/35는 board.ts 기준 황금열쇠/기금/우주여행 특수칸이라 여기서 제외
+-- (이 테이블 시드 자체가 그 특수칸들 도입 전에 만들어져서 지금도 'empty_land'로 잘못 들어있는
+-- 상태 — 이번 이름 교체 범위 밖이라 그대로 둠, 위 INSERT 블록 주석 참고).
+-- 이미 방을 만들어봐서 tiles가 예전 INSERT로 채워져 있는 DB에는 위 INSERT가
+-- `on conflict do nothing`이라 적용 안 되므로, 기존 행은 이 UPDATE로 갱신한다.
+update tiles as t set name = v.name
+from (values
+  (1, '하노이'), (2, '자카르타'), (3, '마닐라'), (4, '방콕'),
+  (6, '쿠알라룸푸르'), (7, '타이베이'), (8, '마카오'), (9, '제주도'),
+  (11, '아테네'), (12, '프라하'), (13, '리스본'), (14, '바르샤바'),
+  (16, '코펜하겐'), (17, '스톡홀름'), (19, '하와이'),
+  (21, '부에노스아이레스'), (22, '상파울루'), (23, '시드니'), (24, '멜버른'),
+  (26, '두바이'), (27, '바르셀로나'), (28, '산토리니'), (29, '부산'),
+  (31, '베를린'), (32, '로마'), (33, '도쿄'), (34, '파리'),
+  (36, '런던'), (37, '뉴욕'), (38, '나이아가라'), (39, '서울')
+) as v(idx, name)
+where t.idx = v.idx;

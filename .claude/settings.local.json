@@ -14,7 +14,10 @@
       "PowerShell(Add-Type -AssemblyName System.Windows.Forms; $s = [System.Windows.Forms.Screen]::PrimaryScreen; \"{0}x{1}\" -f $s.Bounds.Width, $s.Bounds.Height)",
       "Bash(node measure3.js)",
       "Bash(node clockskew.js)",
-      "Bash(node dragbar.js)"
+      "Bash(node dragbar.js)",
+      "Bash(npx tsc *)",
+      "Bash(npx tsx *)",
+      "Bash(supabase functions *)"
     ]
   }
 }

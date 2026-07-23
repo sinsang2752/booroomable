@@ -1,5 +1,5 @@
 import { BOARD } from '../game/board';
-import { getTilePosition } from '../game/boardLayout';
+import { getTilePosition, TILE_WIDTH_PCT } from '../game/boardLayout';
 import type { Player } from '../game/types';
 import { PlayerToken } from './PlayerToken';
 import { Tile } from './Tile';
@@ -38,7 +38,7 @@ export function Board({
           <div
             key={tile.idx}
             className="board-cell"
-            style={{ left: `${pos.xPct}%`, top: `${pos.yPct}%` }}
+            style={{ left: `${pos.xPct}%`, top: `${pos.yPct}%`, width: `${TILE_WIDTH_PCT}%` }}
           >
             <Tile
               tile={tile}

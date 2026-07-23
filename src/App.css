@@ -15,6 +15,10 @@
   max-width: 420px;
 }
 
+.result-screen h1 {
+  font-family: var(--font-emphasis);
+}
+
 /* 닉네임/메인/로비는 #root에 바로 붙는 최상위 화면이라, 셋 다 같은 크기를 쓰게 고정한다.
  * 폭은 420px 고정이고 높이는 창을 꽉 채우는 svh 기반이라, 화면을 오가도 카드 크기가
  * 흔들리지 않고 창 높이(=디스플레이 1/3, electron/main.cjs)가 바뀌면 그대로 같이 커지고
@@ -45,6 +49,13 @@
 .lobby-screen h1 {
   font-size: calc(var(--fluid-unit) * 2.4);
   margin: 0;
+}
+
+/* 닉네임/메인 화면은 부모(.nickname-screen, .main-screen)에 gap이 있어 h1 아래 간격이
+ * 자동으로 생기지만, .lobby-screen은 자식 요소마다 개별 margin-bottom으로 간격을 주는
+ * 방식이라(room-code-row 등) h1만 margin:0이면 바로 아래 방 코드와 붙어 겹쳐 보인다. */
+.lobby-screen h1 {
+  margin-bottom: 16px;
 }
 
 .nickname-screen p,
@@ -99,7 +110,7 @@
 
 .error-text {
   color: var(--color-red);
-  font-size: 13px;
+  font-size: calc(var(--fluid-unit) * 1.08);
   margin-top: 12px;
 }
 
@@ -116,13 +127,13 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 6px 14px;
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   color: var(--text-muted);
   margin-bottom: 16px;
 }
 
 .room-code {
-  font-size: 24px;
+  font-size: calc(var(--fluid-unit) * 2);
   font-weight: 700;
   letter-spacing: 4px;
 }
@@ -133,7 +144,7 @@
   justify-content: center;
   gap: 8px;
   margin-bottom: 16px;
-  font-size: 13px;
+  font-size: calc(var(--fluid-unit) * 1.08);
   color: var(--text-muted);
 }
 
@@ -157,23 +168,23 @@
 }
 
 .host-badge {
-  font-size: 11px;
+  font-size: calc(var(--fluid-unit) * 0.92);
   color: var(--text-muted);
 }
 
 .ready-badge {
-  font-size: 11px;
+  font-size: calc(var(--fluid-unit) * 0.92);
   color: var(--color-green);
   font-weight: 600;
 }
 
 .not-ready-badge {
-  font-size: 11px;
+  font-size: calc(var(--fluid-unit) * 0.92);
   color: var(--text-muted);
 }
 
 .lobby-hint {
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   color: var(--text-muted);
   margin-top: 8px;
 }
@@ -196,7 +207,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
 }
 
 .chat-nickname {
@@ -226,8 +237,6 @@
 .game-screen {
   width: 100%;
   display: flex;
-  /* 다른 화면들처럼 우측에 붙인다. min(1400px,98vw)라 대부분 꽉 차지만, padding이
-   * 줄어들어 여유가 생기면 가운데가 아니라 우측 기준으로 맞아야 앵커가 일관된다. */
   justify-content: flex-end;
 }
 
@@ -236,8 +245,13 @@
   align-items: stretch;
   gap: 16px;
   padding: 12px;
-  width: min(1400px, 98vw);
-  height: 300px;
+  /* 타일 카드가 커지면서(80x110px, 40칸) 보드가 넓은 폭을 필요로 해, game 모드 창 폭
+   * 자체를 화면 폭만큼 쓰도록 바꿨다(electron/main.cjs) — 그래서 여기도 폭 상한을 두지
+   * 않고 창을 그대로 채운다(예전 min(1400px,98vw)는 창 폭이 1360px 고정이던 시절 값). */
+  width: 100%;
+  /* 닉네임/메인/로비 화면과 같은 공식(#root 상하 padding 34px 제외한 순수 창 높이) —
+   * 창 높이(=디스플레이 1/3, electron/main.cjs)가 달라져도 게임판이 같이 늘고 줄게 한다. */
+  height: calc(100svh - 34px);
   box-sizing: border-box;
 }
 
@@ -264,7 +278,7 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -272,6 +286,7 @@
 .turn-timer-number {
   font-weight: 600;
   color: var(--text);
+  font-family: var(--font-emphasis);
 }
 
 .turn-timer-countdown--warning {
@@ -279,38 +294,47 @@
   font-weight: 700;
 }
 
+/* 트랙을 감싸던 알약 모양 배경/테두리는 제거함 — 타일 카드들이 배경 없이 떠 있는 모습.
+ * position:relative는 그대로 유지(타일/중앙 콘솔의 absolute 포지셔닝 기준점이라 필요). */
 .board {
   position: relative;
   flex: 1;
   min-height: 0;
   width: 100%;
-  background: var(--panel-bg);
-  border: 2px solid var(--border);
-  border-radius: 999px;
   box-sizing: border-box;
 }
 
 .board-cell {
   position: absolute;
   transform: translate(-50%, -50%);
+  /* 폭은 Board.tsx가 인라인으로 TILE_WIDTH_PCT%를 준다(boardLayout.ts) — 창 폭이
+   * 화면마다 달라져도(electron/main.cjs) 40칸이 절대 안 겹치게 하는 핵심 장치.
+   * container-type으로 이 실제 렌더 폭을 .tile 내부 cqw 단위의 기준으로 넘겨준다. */
+  container-type: inline-size;
 }
 
+/* 타일 카드 디자인 — 실제 부루마불 카드(상단 컬러/건물칸 + 흰 바탕 + 이름 + 국기 + 가격)를
+ * 레퍼런스로 재구성. 땅/랜드마크 칸만 상단칸(.tile-top)+본문(.tile-body)으로 나뉘고,
+ * 그 외 특수칸(출발/무인도/황금열쇠 등)은 라벨 하나만 중앙에 놓인 기존 방식 그대로 — 아래
+ * `.tile > .tile-label { margin: auto }`가 "라벨이 유일한 자식일 때만" 중앙 정렬을 담당한다.
+ * 폭은 100%(=.board-cell의 인라인 %폭 그대로), 높이는 aspect-ratio로 비율 고정 — 그래서
+ * 화면마다 실제 px 크기가 다르더라도 카드 비율은 항상 같다. 글자·아이콘 크기는 고정 px가
+ * 아니라 cqw(컨테이너 폭 기준 단위)를 써서, 타일이 커지든 작아지든 내부 요소가 같이
+ * 비례해서 커지고 작아진다(칸을 넘치거나 너무 작아 안 보이는 문제 방지). */
 .tile {
-  width: 38px;
-  height: 40px;
+  width: 100%;
+  aspect-ratio: 80 / 110;
   border: 2px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--bg);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  font-size: 8px;
-  line-height: 1.15;
+  font-size: 14cqw;
+  line-height: 1.25;
   text-align: center;
-  padding: 2px;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .tile--start {
@@ -340,16 +364,71 @@
   50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-amber) 90%, transparent); }
 }
 
+/* 상단칸: 지금은 건물 아이콘(이모지) 자리표시자. 나중에 픽셀아트 건물 스프라이트로 교체 예정
+ * (Tile.tsx의 buildingIcon() 참고) — 레이아웃 구조는 이미 완성돼 있어 이미지만 갈아끼우면 됨. */
+.tile-top {
+  width: 100%;
+  flex: 0 0 27%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25cqw;
+  background: color-mix(in srgb, var(--border) 45%, var(--panel-bg));
+  border-bottom: 2px solid var(--border);
+  box-sizing: border-box;
+}
+
+/* landmark는 건물을 절대 못 지으므로(getUpgradeCost가 항상 null), 상단칸은 아이콘 대신
+ * 황금열쇠와 같은 금색 계열로 "특별한 땅"임을 표시 — 기존 배경 틴트를 상단칸으로 옮긴 것. */
+.tile--landmark .tile-top {
+  background: color-mix(in srgb, #b8860b 40%, var(--panel-bg));
+  border-bottom-color: color-mix(in srgb, #b8860b 60%, var(--border));
+}
+
+.tile-body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--panel-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5cqw;
+  padding: 3cqw 1.5cqw;
+}
+
+.tile > .tile-label {
+  margin: auto;
+}
+
 .tile-label {
   font-weight: 600;
+  font-family: var(--font-emphasis);
 }
 
-.tile-price {
+.tile-flag-box {
+  width: 36cqw;
+  height: 25cqw;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.tile-flag {
+  font-size: 18cqw;
+  line-height: 1;
+}
+
+.tile-value {
+  font-weight: 700;
   color: var(--text-muted);
-}
-
-.tile-level {
-  font-size: 7px;
 }
 
 .board-cell-tokens {
@@ -446,9 +525,10 @@
 }
 
 .dice-stage-player {
-  font-size: 13px;
+  font-size: calc(var(--fluid-unit) * 1.08);
   font-weight: 700;
   white-space: nowrap;
+  font-family: var(--font-emphasis);
 }
 
 .dice-pair {
@@ -503,21 +583,31 @@
 
 .dice-stage-hint,
 .dice-stage-sum {
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   color: var(--text-muted);
   margin: 0;
 }
 
 .dice-stage-double {
-  font-size: 13px;
+  font-size: calc(var(--fluid-unit) * 1.08);
   font-weight: 700;
   color: var(--color-amber);
   margin: 0;
 }
 
-.turn-panel {
+/* 오른쪽 열: 턴패널 + 채팅 입력. 채팅은 원래 왼쪽 플레이 영역(보드 아래)에 있었는데,
+ * 보드가 그만큼 세로 공간을 더 쓸 수 있게(=타일이 더 커지게) 오른쪽으로 옮겼다. */
+.right-column {
   width: 320px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.turn-panel {
+  flex: 1;
+  min-height: 0;
   box-sizing: border-box;
   background: var(--panel-bg);
   border: 1px solid var(--border);
@@ -561,7 +651,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: calc(var(--fluid-unit) * 1.5);
   border-radius: 50%;
   background: var(--panel-bg);
   border: 1px dashed var(--border);
@@ -576,12 +666,12 @@
 }
 
 .asset-label {
-  font-size: 11px;
+  font-size: calc(var(--fluid-unit) * 0.92);
   color: var(--text-muted);
 }
 
 .asset-balance {
-  font-size: 18px;
+  font-size: calc(var(--fluid-unit) * 1.5);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   display: flex;
@@ -590,7 +680,7 @@
 }
 
 .asset-delta {
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   font-weight: 600;
 }
 
@@ -603,7 +693,7 @@
 }
 
 .turn-panel-notice {
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   color: var(--text-muted);
   min-height: 20px;
   margin: 0 0 6px;
@@ -629,20 +719,26 @@
 .turn-panel-notice--gold {
   color: #b8860b;
   font-weight: 600;
+  font-family: var(--font-emphasis);
 }
 
 .turn-panel-actions {
   margin-top: auto;
 }
 
+/* 주사위 굴리기/구매/건축 결정 버튼 전부 강조용 픽셀 서체(위 turn-panel-actions 안의 버튼들). */
+.turn-panel-actions button {
+  font-family: var(--font-emphasis);
+}
+
 .turn-panel-wait {
-  font-size: 13px;
+  font-size: calc(var(--fluid-unit) * 1.08);
   color: var(--text-muted);
   margin: 0 0 8px;
 }
 
 .turn-panel-submitting {
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   color: var(--text-muted);
   margin: 4px 0 0;
 }
@@ -678,7 +774,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: calc(var(--fluid-unit) * 1);
   color: var(--color-red);
 }
 

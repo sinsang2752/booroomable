@@ -18,22 +18,31 @@ export const MAX_PLAYERS = 4;
 export const DICE_SIDES = 6;
 export const DICE_COUNT = 2;
 
-export const STARTING_BALANCE = 1500;
+export const STARTING_BALANCE = 3000;
 export const SALARY_ON_PASS_START = 200;
 
-/** 땅 가격/통행료는 손으로 38개를 적는 대신 공식으로 생성 (board.ts 참고) */
-export const LAND_BASE_PRICE = 100;
-export const LAND_PRICE_STEP = 20;
-/** 건물 시스템 도입으로 0.2 -> 0.1 (CLAUDE.md 미정사항: level 0 통행료는 땅값의 10%가 기준) */
+/** 땅값은 board.ts의 LAND_DEFS(구역별 계단식 테이블, CLAUDE.md "보드 칸 구성" 표)에서 직접 정의한다.
+ * level 0 통행료는 그 가격의 이 비율(landmark 제외 — landmark는 고정 통행료, board.ts 참고). */
 export const LAND_TOLL_RATIO = 0.1;
 
-/** 건물 업그레이드: 레벨 0(땅만)~4(호텔). 이름/통행료 배수/건설비 배율은 CLAUDE.md "건물 시스템" 표 그대로. */
+/** 건물 업그레이드: 레벨 0(땅만)~4(호텔). 이름/통행료 배수는 CLAUDE.md "건물 시스템" 표 그대로. */
 export const MAX_BUILDING_LEVEL = 4;
 export const BUILDING_LEVEL_NAMES = ['땅', '별장1', '별장2', '빌딩', '호텔'];
-/** tile.toll(=price*LAND_TOLL_RATIO)에 곱하는 레벨별 배수. 결과 = price * [0.1, 0.5, 1.5, 3, 4.5] */
-export const BUILDING_TOLL_LEVEL_MULTIPLIERS = [1, 5, 15, 30, 45];
-/** index = 현재 레벨(0~3), 값 = 다음 레벨로 올릴 때 price에 곱하는 건설비 비율 */
-export const BUILDING_UPGRADE_COST_RATIOS = [0.4, 0.4, 1.5, 2.5];
+/** tile.toll(=price*LAND_TOLL_RATIO)에 곱하는 레벨별 배수. 결과 = price * [0.1, 0.5, 1.5, 4, 8].
+ * 빌딩 ×3->×4, 호텔 ×4.5->×8로 상향(원작 재분석: 건물이 대체 없이 누적 합산되는 원작 구조를
+ * 이 프로젝트는 안 쓰는 대신, 최고 등급 배율을 원작의 누적 결과치에 맞춰 올려 같은 효과를 냄
+ * — CLAUDE.md "통행료 배율" 절 참고). */
+export const BUILDING_TOLL_LEVEL_MULTIPLIERS = [1, 5, 15, 40, 80];
+/** 구역별 건설비(원작처럼 땅값과 무관하게 구역 안에서 고정, CLAUDE.md "건설비: 구역별 고정" 참고).
+ * index 0~3 = Zone 1~4. 구역 판정은 Math.floor(tileIdx / 10) — 구역이 idx 10단위와 정확히 나뉘어
+ * 있어서(특수칸이 x0/x5에 있음) 이 공식 하나로 충분하다(buildings.ts::getUpgradeCost 참고).
+ * villa는 별장1/별장2 둘 다 같은 금액(원작 규칙 — 별장2는 별장1과 같은 금액을 한 번 더 낸다). */
+export const ZONE_BUILD_COST = [
+  { villa: 60, building: 150, hotel: 250 }, // Zone 1
+  { villa: 120, building: 300, hotel: 500 }, // Zone 2
+  { villa: 160, building: 430, hotel: 750 }, // Zone 3
+  { villa: 200, building: 600, hotel: 1000 }, // Zone 4
+];
 
 /** 파산 방지 자동매각(통행료 낼 돈 부족 시): 건설비/땅값의 몇 %를 되돌려받는지. 100%로 시작, 파산이 너무 안 나면 낮출 것. */
 export const BUILDING_SALE_RATIO = 1;

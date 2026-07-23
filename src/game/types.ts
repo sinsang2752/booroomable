@@ -4,6 +4,7 @@ export type TileType =
   | 'start'
   | 'jail'
   | 'empty_land'
+  | 'landmark'
   | 'event'
   | 'welfare_pay'
   | 'welfare_get'
