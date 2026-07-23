@@ -43,6 +43,9 @@ export const WELFARE_PAY_TILE_IDX = 10;
 export const WELFARE_GET_TILE_IDX = 30;
 export const WELFARE_PAY_AMOUNT = 100;
 
+/** 우주여행 칸. 도착하면 보드의 원하는 칸으로 이동(자기 자신은 목적지로 다시 못 고름). */
+export const SPACE_TRAVEL_TILE_IDX = 18;
+
 /** 황금열쇠 1차 덱: 상금/벌금/생일축하/이동. 원작 예시 금액(30만/20만/10만/5만 등)을 우리 경제 규모(초기자본 1500)에 맞춰 1/1000로 스케일.
  * "특정 칸으로 이동" 카드는 우리 보드에 원작의 철도·전기회사 같은 지정 대상이 없어 도입하지 않는다. */
 export type GoldenKeyCardType =

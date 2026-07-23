@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { Board } from './components/Board';
+import { DiceStage } from './components/DiceStage';
 import { LobbyScreen } from './components/LobbyScreen';
 import { MainScreen } from './components/MainScreen';
 import { NicknameScreen } from './components/NicknameScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { TurnPanel } from './components/TurnPanel';
+import { TurnTimer } from './components/TurnTimer';
 import { BOARD } from './game/board';
 import { getStartBonusEligibleTiles, getUpgradeCost } from './game/buildings';
 import { BUILDING_LEVEL_NAMES } from './game/config';
@@ -39,7 +41,9 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
     rollDice,
     decidePurchase,
     decideBuild,
+    decideInitialBuild,
     decideStartBonusBuild,
+    decideSpaceTravel,
     forfeit,
   } = useSyncedGame(roomId);
   const myPlayer = dbPlayers.find((p) => p.client_id === clientId);
@@ -87,18 +91,39 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
   );
 
   const selectableTiles = useMemo(() => {
-    if (!state || !myPlayer || !isMyTurn || state.phase !== 'awaiting-start-bonus-build') {
-      return undefined;
+    if (!state || !myPlayer || !isMyTurn) return undefined;
+
+    if (state.phase === 'awaiting-start-bonus-build') {
+      const map = new Map<number, string>();
+      for (const idx of getStartBonusEligibleTiles(state, myPlayer.id)) {
+        const level = state.tileLevels[idx];
+        const cost = getUpgradeCost(idx, level);
+        const nextLevelName = BUILDING_LEVEL_NAMES[level + 1];
+        map.set(idx, `${BOARD[idx].name} → ${nextLevelName}(으)로 업그레이드 (${cost})`);
+      }
+      return map;
     }
-    const map = new Map<number, string>();
-    for (const idx of getStartBonusEligibleTiles(state, myPlayer.id)) {
-      const level = state.tileLevels[idx];
-      const cost = getUpgradeCost(idx, level);
-      const nextLevelName = BUILDING_LEVEL_NAMES[level + 1];
-      map.set(idx, `${BOARD[idx].name} → ${nextLevelName}(으)로 업그레이드 (${cost})`);
+
+    if (state.phase === 'awaiting-space-travel-destination') {
+      const myPosition = state.players.find((p) => p.id === myPlayer.id)?.position;
+      const map = new Map<number, string>();
+      for (const tile of BOARD) {
+        if (tile.type === 'space_travel' || tile.idx === myPosition) continue;
+        map.set(tile.idx, `${tile.name}(으)로 우주여행`);
+      }
+      return map;
     }
-    return map;
+
+    return undefined;
   }, [state, myPlayer, isMyTurn]);
+
+  function handleSelectTile(idx: number) {
+    if (state?.phase === 'awaiting-space-travel-destination') {
+      decideSpaceTravel(idx);
+    } else {
+      decideStartBonusBuild(idx);
+    }
+  }
 
   if (error) {
     return (
@@ -113,34 +138,40 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
   }
 
   const winner = state.players.find((p) => p.id === state.winnerId) ?? null;
+  const currentPlayer = state.players[state.currentPlayerIndex];
 
   return (
     <div className="game-screen">
-      <Board
-        tileOwners={state.tileOwners}
-        tileLevels={state.tileLevels}
-        players={state.players}
-        bubbles={bubbles}
-        selectableTiles={selectableTiles}
-        onSelectTile={decideStartBonusBuild}
-      >
-        {state.phase === 'game-over' ? (
-          <ResultScreen winnerName={winner?.name ?? null} onRestart={onRestart} />
-        ) : (
-          <>
-            <TurnPanel
-              state={state}
-              isMyTurn={isMyTurn}
-              isEliminated={isEliminated}
-              isSubmitting={isSubmitting}
+      <div className="game-layout">
+        <div className="play-area">
+          {state.phase !== 'game-over' && (
+            <TurnTimer
+              turnNumber={state.turnNumber}
               turnDeadlineMs={turnDeadlineMs}
               turnTimeSec={turnTimeSec}
-              onRoll={rollDice}
-              onDecide={decidePurchase}
-              onDecideBuild={decideBuild}
-              onSkipStartBonusBuild={() => decideStartBonusBuild(null)}
-              onForfeit={forfeit}
             />
+          )}
+          <Board
+            tileOwners={state.tileOwners}
+            tileLevels={state.tileLevels}
+            players={state.players}
+            bubbles={bubbles}
+            selectableTiles={selectableTiles}
+            onSelectTile={handleSelectTile}
+          >
+            {state.phase === 'game-over' ? (
+              <ResultScreen winnerName={winner?.name ?? null} onRestart={onRestart} />
+            ) : (
+              <DiceStage
+                lastRoll={state.lastRoll}
+                isDoubleRoll={state.isDoubleRoll}
+                phase={state.phase}
+                playerName={currentPlayer.name}
+                playerColor={currentPlayer.color}
+              />
+            )}
+          </Board>
+          {state.phase !== 'game-over' && (
             <input
               type="text"
               className="game-chat-input"
@@ -153,9 +184,24 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
                 target.value = '';
               }}
             />
-          </>
+          )}
+        </div>
+        {state.phase !== 'game-over' && (
+          <TurnPanel
+            state={state}
+            isMyTurn={isMyTurn}
+            isEliminated={isEliminated}
+            isSubmitting={isSubmitting}
+            onRoll={rollDice}
+            onDecide={decidePurchase}
+            onDecideBuild={decideBuild}
+            onDecideInitialBuild={decideInitialBuild}
+            onSkipStartBonusBuild={() => decideStartBonusBuild(null)}
+            onSkipSpaceTravel={() => decideSpaceTravel(null)}
+            onForfeit={forfeit}
+          />
         )}
-      </Board>
+      </div>
     </div>
   );
 }

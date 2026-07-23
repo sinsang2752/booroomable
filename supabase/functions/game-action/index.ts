@@ -223,11 +223,18 @@ async function handleClaimTimeout(supabase: SupabaseClient, roomId: string) {
   const autoAction: GameAction =
     oldState.phase === 'awaiting-purchase-decision'
       ? { type: 'DECIDE_PURCHASE', buy: false }
-      : oldState.phase === 'awaiting-build-decision' || oldState.phase === 'awaiting-initial-build-decision'
+      : oldState.phase === 'awaiting-build-decision'
         ? { type: 'DECIDE_BUILD', build: false }
-        : oldState.phase === 'awaiting-start-bonus-build'
-          ? { type: 'DECIDE_START_BONUS_BUILD', tileIdx: null }
-          : { type: 'ROLL_DICE' };
+        : oldState.phase === 'awaiting-initial-build-decision'
+          ? {
+              type: 'DECIDE_INITIAL_BUILD',
+              targetLevel: oldState.pendingPurchaseTileIdx !== null ? oldState.tileLevels[oldState.pendingPurchaseTileIdx] : 0,
+            }
+          : oldState.phase === 'awaiting-start-bonus-build'
+            ? { type: 'DECIDE_START_BONUS_BUILD', tileIdx: null }
+            : oldState.phase === 'awaiting-space-travel-destination'
+              ? { type: 'DECIDE_SPACE_TRAVEL', tileIdx: null }
+              : { type: 'ROLL_DICE' };
 
   const newState = gameReducer(oldState, autoAction);
   await applyPatches(supabase, roomId, oldState, newState, snapshot.room.version + 1);
@@ -295,10 +302,22 @@ Deno.serve(async (req) => {
           type: 'DECIDE_BUILD',
           build: !!body.build,
         });
+      case 'DECIDE_INITIAL_BUILD':
+        if (!clientId) return jsonResponse({ error: 'clientId가 필요합니다.' }, 400);
+        return await handleRollOrPurchase(supabase, roomId, clientId, {
+          type: 'DECIDE_INITIAL_BUILD',
+          targetLevel: typeof body.targetLevel === 'number' ? body.targetLevel : 0,
+        });
       case 'DECIDE_START_BONUS_BUILD':
         if (!clientId) return jsonResponse({ error: 'clientId가 필요합니다.' }, 400);
         return await handleRollOrPurchase(supabase, roomId, clientId, {
           type: 'DECIDE_START_BONUS_BUILD',
+          tileIdx: typeof body.tileIdx === 'number' ? body.tileIdx : null,
+        });
+      case 'DECIDE_SPACE_TRAVEL':
+        if (!clientId) return jsonResponse({ error: 'clientId가 필요합니다.' }, 400);
+        return await handleRollOrPurchase(supabase, roomId, clientId, {
+          type: 'DECIDE_SPACE_TRAVEL',
           tileIdx: typeof body.tileIdx === 'number' ? body.tileIdx : null,
         });
       case 'CLAIM_TIMEOUT':

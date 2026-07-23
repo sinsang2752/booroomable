@@ -20,6 +20,28 @@ export function canAffordUpgrade(tileIdx: number, level: number, balance: number
   return cost !== null && balance >= cost;
 }
 
+/** fromLevel에서 잔액이 허용하는 데까지 몇 레벨까지 갈 수 있는지 (최초구매 즉시건축 등급 선택지 계산용). */
+export function getMaxAffordableLevel(tileIdx: number, fromLevel: number, balance: number): number {
+  let level = fromLevel;
+  let remaining = balance;
+  while (level < MAX_BUILDING_LEVEL) {
+    const cost = getUpgradeCost(tileIdx, level);
+    if (cost === null || remaining < cost) break;
+    remaining -= cost;
+    level += 1;
+  }
+  return level;
+}
+
+/** fromLevel -> toLevel까지 한 번에 지을 때 드는 총 건설비. */
+export function getCumulativeUpgradeCost(tileIdx: number, fromLevel: number, toLevel: number): number {
+  let total = 0;
+  for (let level = fromLevel; level < toLevel; level += 1) {
+    total += getUpgradeCost(tileIdx, level) ?? 0;
+  }
+  return total;
+}
+
 /** 출발칸 정확 도착 보너스 대상: 이 플레이어가 소유 + 레벨 MAX 미만 + 지금 잔액으로 감당되는 땅. */
 export function getStartBonusEligibleTiles(state: GameState, playerId: string): number[] {
   const player = state.players.find((p) => p.id === playerId);

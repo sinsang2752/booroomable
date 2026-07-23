@@ -70,8 +70,16 @@ export function useSyncedGame(roomId: string) {
   const rollDice = useCallback(() => submit({ type: 'ROLL_DICE' }), [submit]);
   const decidePurchase = useCallback((buy: boolean) => submit({ type: 'DECIDE_PURCHASE', buy }), [submit]);
   const decideBuild = useCallback((build: boolean) => submit({ type: 'DECIDE_BUILD', build }), [submit]);
+  const decideInitialBuild = useCallback(
+    (targetLevel: number) => submit({ type: 'DECIDE_INITIAL_BUILD', targetLevel }),
+    [submit],
+  );
   const decideStartBonusBuild = useCallback(
     (tileIdx: number | null) => submit({ type: 'DECIDE_START_BONUS_BUILD', tileIdx }),
+    [submit],
+  );
+  const decideSpaceTravel = useCallback(
+    (tileIdx: number | null) => submit({ type: 'DECIDE_SPACE_TRAVEL', tileIdx }),
     [submit],
   );
   const forfeit = useCallback(
@@ -115,7 +123,9 @@ export function useSyncedGame(roomId: string) {
     rollDice,
     decidePurchase,
     decideBuild,
+    decideInitialBuild,
     decideStartBonusBuild,
+    decideSpaceTravel,
     forfeit,
   };
 }

@@ -1,5 +1,7 @@
 import { BOARD } from './board.ts';
 import {
+  getCumulativeUpgradeCost,
+  getMaxAffordableLevel,
   getMostValuableOwnedTile,
   getPropertyValue,
   getStartBonusEligibleTiles,
@@ -74,8 +76,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return handleDecidePurchase(state, action.buy);
     case 'DECIDE_BUILD':
       return handleDecideBuild(state, action.build);
+    case 'DECIDE_INITIAL_BUILD':
+      return handleDecideInitialBuild(state, action.targetLevel);
     case 'DECIDE_START_BONUS_BUILD':
       return handleDecideStartBonusBuild(state, action.tileIdx);
+    case 'DECIDE_SPACE_TRAVEL':
+      return handleDecideSpaceTravel(state, action.tileIdx);
     case 'FORFEIT':
       return handleForfeit(state, action.playerId);
     default:
@@ -353,6 +359,9 @@ function resolveTileLanding(
     } else {
       notice = `${currentPlayer.name}님이 사회복지기금 접수처에 도착했지만 적립된 기금이 없습니다.`;
     }
+  } else if (tile.type === 'space_travel') {
+    phase = 'awaiting-space-travel-destination';
+    notice = `${currentPlayer.name}님이 우주여행 칸에 도착했습니다! 이동할 칸을 골라주세요.`;
   }
 
   return { tileOwners, tileLevels, eventDeck, welfarePool, phase, pendingPurchaseTileIdx, notice };
@@ -410,7 +419,8 @@ function handleRollDice(state: GameState): GameState {
   if (
     landing.phase === 'awaiting-purchase-decision' ||
     landing.phase === 'awaiting-build-decision' ||
-    landing.phase === 'awaiting-start-bonus-build'
+    landing.phase === 'awaiting-start-bonus-build' ||
+    landing.phase === 'awaiting-space-travel-destination'
   ) {
     return rolledState;
   }
@@ -418,24 +428,23 @@ function handleRollDice(state: GameState): GameState {
   return finishTurnStep(rolledState, isDouble);
 }
 
-/** 최초 구매 직후 감당되는 데까지 반복해서 건물을 지을 수 있게 하는 헬퍼(handleDecidePurchase/handleDecideBuild 공용).
+/** 최초 구매 직후 감당되는 최고 등급까지 한 번에 골라 지을 수 있게 프롬프트를 띄우는 헬퍼(handleDecidePurchase 전용).
  * 재방문 업그레이드(awaiting-build-decision)는 한 번에 한 단계로 고정이라 이 헬퍼를 쓰지 않는다. */
 function offerInitialBuild(state: GameState, tileIdx: number): GameState {
   const tile = BOARD[tileIdx];
   const currentPlayer = state.players[state.currentPlayerIndex];
   const level = state.tileLevels[tileIdx];
 
-  const upgradeCost = getUpgradeCost(tileIdx, level);
-  if (upgradeCost === null || currentPlayer.balance < upgradeCost) {
+  const maxLevel = getMaxAffordableLevel(tileIdx, level, currentPlayer.balance);
+  if (maxLevel === level) {
     return finishTurnStep(state, state.isDoubleRoll);
   }
 
-  const nextLevelName = BUILDING_LEVEL_NAMES[level + 1];
   return {
     ...state,
     phase: 'awaiting-initial-build-decision',
     pendingPurchaseTileIdx: tileIdx,
-    notice: `${currentPlayer.name}님, ${tile.name}을(를) ${nextLevelName}(으)로 지으시겠습니까? (${upgradeCost})`,
+    notice: `${currentPlayer.name}님, ${tile.name}을(를) 구매했습니다! 원하는 등급까지 지어보세요 (최대 ${BUILDING_LEVEL_NAMES[maxLevel]}).`,
   };
 }
 
@@ -477,10 +486,9 @@ function handleDecidePurchase(state: GameState, buy: boolean): GameState {
   return finishTurnStep(resolvedState, state.isDoubleRoll);
 }
 
+/** 재방문 업그레이드 전용(한 번에 한 단계, Y/N). 최초구매 즉시건축은 handleDecideInitialBuild가 담당. */
 function handleDecideBuild(state: GameState, build: boolean): GameState {
-  const isInitial = state.phase === 'awaiting-initial-build-decision';
-  const isRevisit = state.phase === 'awaiting-build-decision';
-  if ((!isInitial && !isRevisit) || state.pendingPurchaseTileIdx === null) {
+  if (state.phase !== 'awaiting-build-decision' || state.pendingPurchaseTileIdx === null) {
     return state;
   }
 
@@ -490,7 +498,6 @@ function handleDecideBuild(state: GameState, build: boolean): GameState {
   const currentPlayer = players[state.currentPlayerIndex];
   let tileLevels = state.tileLevels;
   let notice: string;
-  let built = false;
 
   const currentLevel = tileLevels[tileIdx];
   const upgradeCost = getUpgradeCost(tileIdx, currentLevel);
@@ -500,7 +507,6 @@ function handleDecideBuild(state: GameState, build: boolean): GameState {
     tileLevels = [...tileLevels];
     tileLevels[tileIdx] += 1;
     notice = `${currentPlayer.name}님이 ${tile.name}을(를) ${BUILDING_LEVEL_NAMES[tileLevels[tileIdx]]}(으)로 업그레이드했습니다.`;
-    built = true;
   } else {
     notice = `${currentPlayer.name}님이 ${tile.name} 건물을 업그레이드하지 않았습니다.`;
   }
@@ -514,9 +520,48 @@ function handleDecideBuild(state: GameState, build: boolean): GameState {
     notice,
   };
 
-  if (isInitial && built) {
-    return offerInitialBuild(resolvedState, tileIdx);
+  return finishTurnStep(resolvedState, state.isDoubleRoll);
+}
+
+/** 최초구매 즉시건축: 감당되는 데까지 원하는 등급을 한 번에 선택. 클라이언트가 보낸 targetLevel을
+ * 그대로 믿지 않고 서버가 다시 감당 가능한 최고 레벨로 클램프한다. */
+function handleDecideInitialBuild(state: GameState, targetLevel: number): GameState {
+  if (state.phase !== 'awaiting-initial-build-decision' || state.pendingPurchaseTileIdx === null) {
+    return state;
   }
+
+  const tileIdx = state.pendingPurchaseTileIdx;
+  const tile = BOARD[tileIdx];
+  const players = state.players.map((p) => ({ ...p }));
+  const currentPlayer = players[state.currentPlayerIndex];
+  let tileLevels = state.tileLevels;
+  let notice: string;
+
+  const currentLevel = tileLevels[tileIdx];
+  const maxLevel = getMaxAffordableLevel(tileIdx, currentLevel, currentPlayer.balance);
+  const clampedTarget = Number.isInteger(targetLevel)
+    ? Math.max(currentLevel, Math.min(targetLevel, maxLevel))
+    : currentLevel;
+
+  if (clampedTarget > currentLevel) {
+    const cost = getCumulativeUpgradeCost(tileIdx, currentLevel, clampedTarget);
+    currentPlayer.balance -= cost;
+    tileLevels = [...tileLevels];
+    tileLevels[tileIdx] = clampedTarget;
+    notice = `${currentPlayer.name}님이 ${tile.name}을(를) ${BUILDING_LEVEL_NAMES[clampedTarget]}(으)로 지었습니다. (건설비 ${cost})`;
+  } else {
+    notice = `${currentPlayer.name}님이 ${tile.name}에 건물을 짓지 않았습니다.`;
+  }
+
+  const resolvedState: GameState = {
+    ...state,
+    players,
+    tileLevels,
+    phase: 'awaiting-roll',
+    pendingPurchaseTileIdx: null,
+    notice,
+  };
+
   return finishTurnStep(resolvedState, state.isDoubleRoll);
 }
 
@@ -555,6 +600,68 @@ function handleDecideStartBonusBuild(state: GameState, tileIdx: number | null): 
   };
 
   return finishTurnStep(resolvedState, state.isDoubleRoll);
+}
+
+/** 우주여행: 보드의 원하는 칸으로 이동(텔레포트가 아니라 트랙을 따라 전진하는 판정이라 출발점을
+ * 지나치면 월급). 도착한 칸의 정상 효과가 이어지고, 이동 후엔 더블이어도 재굴림 없이 턴 종료.
+ * tileIdx가 null이거나 현재 위치·우주여행 칸 자체를 가리키면(서버 재검증, 클라이언트 신뢰 안 함)
+ * 이동 없이 그 자리에서 턴을 넘긴다. */
+function handleDecideSpaceTravel(state: GameState, tileIdx: number | null): GameState {
+  if (state.phase !== 'awaiting-space-travel-destination') return state;
+
+  const players = state.players.map((p) => ({ ...p }));
+  const currentPlayer = players[state.currentPlayerIndex];
+
+  const invalid =
+    tileIdx === null || tileIdx === currentPlayer.position || BOARD[tileIdx].type === 'space_travel';
+
+  if (invalid) {
+    const notice = `${currentPlayer.name}님이 우주여행을 하지 않았습니다.`;
+    return finishTurnStep({ ...state, players, phase: 'awaiting-roll', isDoubleRoll: false, notice }, false);
+  }
+
+  const wrapped = tileIdx < currentPlayer.position;
+  if (wrapped) {
+    currentPlayer.balance += SALARY_ON_PASS_START;
+  }
+  currentPlayer.position = tileIdx;
+
+  const landing = resolveTileLanding(
+    players,
+    currentPlayer,
+    tileIdx,
+    state.tileOwners,
+    state.tileLevels,
+    state.eventDeck,
+    state.welfarePool,
+    tileIdx === START_TILE_IDX,
+    true,
+  );
+
+  const resolvedState: GameState = {
+    ...state,
+    players,
+    tileOwners: landing.tileOwners,
+    tileLevels: landing.tileLevels,
+    eventDeck: landing.eventDeck,
+    welfarePool: landing.welfarePool,
+    // 이동 후엔 더블이어도 재굴림 없음(문서 명시) — 도착한 칸이 또 구매/건축 프롬프트를 띄워
+    // 그 결정이 나중에 finishTurnStep(state.isDoubleRoll)로 이어지는 경우까지 포함해 확실히 막는다.
+    isDoubleRoll: false,
+    phase: landing.phase,
+    pendingPurchaseTileIdx: landing.pendingPurchaseTileIdx,
+    notice: landing.notice,
+  };
+
+  if (
+    resolvedState.phase === 'awaiting-purchase-decision' ||
+    resolvedState.phase === 'awaiting-build-decision' ||
+    resolvedState.phase === 'awaiting-start-bonus-build'
+  ) {
+    return resolvedState;
+  }
+
+  return finishTurnStep(resolvedState, false);
 }
 
 /** 자기 턴이든 남의 턴이든 언제나 낼 수 있는 포기. 파산과 동일하게 취급한다.

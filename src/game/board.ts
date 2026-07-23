@@ -5,6 +5,7 @@ import {
   LAND_BASE_PRICE,
   LAND_PRICE_STEP,
   LAND_TOLL_RATIO,
+  SPACE_TRAVEL_TILE_IDX,
   START_TILE_IDX,
   WELFARE_GET_TILE_IDX,
   WELFARE_PAY_TILE_IDX,
@@ -34,6 +35,10 @@ function buildBoard(): Tile[] {
     }
     if (idx === WELFARE_GET_TILE_IDX) {
       tiles.push({ idx, name: '복지기금 수령', type: 'welfare_get', price: null, toll: null });
+      continue;
+    }
+    if (idx === SPACE_TRAVEL_TILE_IDX) {
+      tiles.push({ idx, name: '우주여행', type: 'space_travel', price: null, toll: null });
       continue;
     }
 

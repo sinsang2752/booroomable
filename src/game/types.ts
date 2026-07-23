@@ -1,6 +1,13 @@
 export type PlayerColor = 'blue' | 'red' | 'green' | 'amber';
 
-export type TileType = 'start' | 'jail' | 'empty_land' | 'event' | 'welfare_pay' | 'welfare_get';
+export type TileType =
+  | 'start'
+  | 'jail'
+  | 'empty_land'
+  | 'event'
+  | 'welfare_pay'
+  | 'welfare_get'
+  | 'space_travel';
 
 export type TurnPhase =
   | 'awaiting-roll'
@@ -8,6 +15,7 @@ export type TurnPhase =
   | 'awaiting-build-decision'
   | 'awaiting-initial-build-decision'
   | 'awaiting-start-bonus-build'
+  | 'awaiting-space-travel-destination'
   | 'game-over';
 
 export interface Tile {
@@ -54,5 +62,7 @@ export type GameAction =
   | { type: 'ROLL_DICE' }
   | { type: 'DECIDE_PURCHASE'; buy: boolean }
   | { type: 'DECIDE_BUILD'; build: boolean }
+  | { type: 'DECIDE_INITIAL_BUILD'; targetLevel: number }
   | { type: 'DECIDE_START_BONUS_BUILD'; tileIdx: number | null }
+  | { type: 'DECIDE_SPACE_TRAVEL'; tileIdx: number | null }
   | { type: 'FORFEIT'; playerId: string };
