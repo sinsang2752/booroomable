@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import type { ChatMessage } from '../chat/types';
+import { ChatPanel } from './ChatPanel';
 import { MIN_PLAYERS } from '../game/config';
 import type { LobbyPlayer, RoomRow } from '../lobby/types';
 
@@ -10,6 +12,9 @@ interface LobbyScreenProps {
   onToggleReady: () => void;
   onSetTurnTime: (sec: number) => void;
   onStartGame: () => void;
+  onLeaveRoom: () => void;
+  chatMessages: ChatMessage[];
+  onSendChat: (body: string) => void;
 }
 
 export function LobbyScreen({
@@ -20,6 +25,9 @@ export function LobbyScreen({
   onToggleReady,
   onSetTurnTime,
   onStartGame,
+  onLeaveRoom,
+  chatMessages,
+  onSendChat,
 }: LobbyScreenProps) {
   const [copied, setCopied] = useState(false);
 
@@ -29,7 +37,9 @@ export function LobbyScreen({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const canStart = players.length >= MIN_PLAYERS && players.every((p) => p.is_ready);
+  // 방장은 준비 여부와 상관없이 시작 버튼을 가지므로, "모두 준비완료" 조건에서는 제외한다.
+  const nonHostPlayers = players.filter((p) => p.client_id !== room.host_client_id);
+  const canStart = players.length >= MIN_PLAYERS && nonHostPlayers.every((p) => p.is_ready);
 
   return (
     <div className="lobby-screen">
@@ -41,6 +51,10 @@ export function LobbyScreen({
           {copied ? '복사됨' : '코드 복사'}
         </button>
       </div>
+
+      <button type="button" className="leave-button" onClick={onLeaveRoom}>
+        로비 나가기
+      </button>
 
       {isHost && (
         <label className="turn-time-row">
@@ -62,15 +76,18 @@ export function LobbyScreen({
         {players.map((p) => (
           <li key={p.id} style={{ borderColor: `var(--color-${p.color})` }}>
             <span>{p.nickname}</span>
-            {p.client_id === room.host_client_id && <span className="host-badge">방장</span>}
-            <span className={p.is_ready ? 'ready-badge' : 'not-ready-badge'}>
-              {p.is_ready ? '준비완료' : '대기중'}
-            </span>
+            {p.client_id === room.host_client_id ? (
+              <span className="host-badge">방장</span>
+            ) : (
+              <span className={p.is_ready ? 'ready-badge' : 'not-ready-badge'}>
+                {p.is_ready ? '준비완료' : '대기중'}
+              </span>
+            )}
           </li>
         ))}
       </ul>
 
-      {myPlayer && (
+      {myPlayer && !isHost && (
         <button type="button" onClick={onToggleReady}>
           {myPlayer.is_ready ? '준비 취소' : '준비 완료'}
         </button>
@@ -82,11 +99,13 @@ export function LobbyScreen({
         </button>
       )}
 
-      {!canStart && (
+      {isHost && !canStart && (
         <p className="lobby-hint">
-          최소 {MIN_PLAYERS}명, 모든 참가자가 준비 완료해야 시작할 수 있습니다.
+          최소 {MIN_PLAYERS}명, 방장을 제외한 모든 참가자가 준비 완료해야 시작할 수 있습니다.
         </p>
       )}
+
+      <ChatPanel messages={chatMessages} onSend={onSendChat} />
     </div>
   );
 }

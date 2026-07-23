@@ -22,17 +22,21 @@ async function addPlayerToRoom(roomId: string, nickname: string): Promise<LobbyP
   if (existing) return existing as LobbyPlayer;
 
   for (let attempt = 0; attempt < MAX_JOIN_ATTEMPTS; attempt += 1) {
-    const { count, error: countError } = await supabase
+    const { data: seatRows, error: seatError } = await supabase
       .from('players')
-      .select('*', { count: 'exact', head: true })
+      .select('seat_order')
       .eq('room_id', roomId);
-    if (countError) throw countError;
+    if (seatError) throw seatError;
 
-    if ((count ?? 0) >= MAX_PLAYERS) {
+    const usedSeats = new Set((seatRows ?? []).map((p) => p.seat_order));
+    if (usedSeats.size >= MAX_PLAYERS) {
       throw new LobbyError('방이 가득 찼습니다.');
     }
 
-    const seatOrder = count ?? 0;
+    // 중간에 나간 사람이 있어도 비어있는 가장 작은 좌석부터 채운다.
+    let seatOrder = 0;
+    while (usedSeats.has(seatOrder)) seatOrder += 1;
+
     const { data, error } = await supabase
       .from('players')
       .insert({
@@ -147,6 +151,35 @@ export async function startGame(roomId: string): Promise<void> {
     .update({ status: 'playing', turn_number: 1, turn_started_at: new Date().toISOString() })
     .eq('id', roomId);
   if (error) throw error;
+}
+
+/** 로비를 나간다. 방장이 나가면 남은 사람 중 가장 먼저 들어온 사람에게 방장을 넘기고,
+ * 아무도 안 남으면 방 자체를 지운다. */
+export async function leaveRoom(room: RoomRow, player: LobbyPlayer): Promise<void> {
+  const { error: deleteError } = await supabase.from('players').delete().eq('id', player.id);
+  if (deleteError) throw deleteError;
+
+  if (room.host_client_id !== player.client_id) return;
+
+  const { data: nextHost, error: nextHostError } = await supabase
+    .from('players')
+    .select('*')
+    .eq('room_id', room.id)
+    .order('seat_order', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (nextHostError) throw nextHostError;
+
+  if (nextHost) {
+    const { error: updateError } = await supabase
+      .from('rooms')
+      .update({ host_client_id: nextHost.client_id })
+      .eq('id', room.id);
+    if (updateError) throw updateError;
+  } else {
+    const { error: roomDeleteError } = await supabase.from('rooms').delete().eq('id', room.id);
+    if (roomDeleteError) throw roomDeleteError;
+  }
 }
 
 /** 새로고침/재실행 후에도 아직 시작하지 않은 내 방이 있으면 찾아서 돌려준다. */

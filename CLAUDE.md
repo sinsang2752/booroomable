@@ -152,6 +152,7 @@
 ### `chat_messages` (선택)
 `id` uuid PK · `room_id` uuid FK · `player_id` uuid FK · `body` text · `created_at` timestamp
 > 실시간 채팅은 Broadcast로 즉시 전파가 기본. 이 테이블은 로그 다시보기 저장용. 초기엔 생략 가능.
+> 2단계 채팅 슬라이스에서 실제로 생략함 — 현재 채팅은 Broadcast(`room:{roomId}:chat` 채널)로만 오가고 이 테이블엔 저장하지 않는다. 그래서 로비→게임 전환/새로고침 시 이전 대화가 사라진다. 나중에 로그 다시보기가 필요해지면 메시지 전송 시 이 테이블에 insert 한 줄 추가 + "로그 열기" UI만 얹으면 된다.
 
 ---
 

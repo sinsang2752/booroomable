@@ -3,16 +3,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchPlayers,
   fetchRoom,
+  leaveRoom as requestLeaveRoom,
   setReady,
   setTurnTimeSec,
   startGame as requestStartGame,
 } from '../lobby/api';
 import { createRoomChannel, sendGameStarted, sendLobbyUpdated } from '../lobby/realtime';
-import type { LobbyPlayer, RoomRow } from '../lobby/types';
+import type { GameRosterEntry, LobbyPlayer, RoomRow } from '../lobby/types';
 import { getClientId } from '../lib/identity';
 import { supabase } from '../lib/supabaseClient';
 
-export function useLobby(roomId: string, onGameStart: (names: string[]) => void) {
+function toRoster(players: LobbyPlayer[]): GameRosterEntry[] {
+  return players.map((p) => ({ clientId: p.client_id, nickname: p.nickname }));
+}
+
+export function useLobby(roomId: string, onGameStart: (roster: GameRosterEntry[]) => void) {
   const clientId = useMemo(() => getClientId(), []);
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -33,7 +38,7 @@ export function useLobby(roomId: string, onGameStart: (names: string[]) => void)
 
       if (freshRoom.status === 'playing' && !startedRef.current) {
         startedRef.current = true;
-        onGameStartRef.current(freshPlayers.map((p) => p.nickname));
+        onGameStartRef.current(toRoster(freshPlayers));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -46,10 +51,10 @@ export function useLobby(roomId: string, onGameStart: (names: string[]) => void)
 
     const channel = createRoomChannel(roomId, clientId, {
       onLobbyUpdated: refreshLobby,
-      onGameStarted: (names) => {
+      onGameStarted: (roster) => {
         if (startedRef.current) return;
         startedRef.current = true;
-        onGameStartRef.current(names);
+        onGameStartRef.current(roster);
       },
     });
     channelRef.current = channel;
@@ -83,13 +88,30 @@ export function useLobby(roomId: string, onGameStart: (names: string[]) => void)
   const startGame = useCallback(async () => {
     if (!room) return;
     await requestStartGame(room.id);
-    const names = players.map((p) => p.nickname);
-    if (channelRef.current) sendGameStarted(channelRef.current, names);
+    const roster = toRoster(players);
+    if (channelRef.current) sendGameStarted(channelRef.current, roster);
     if (!startedRef.current) {
       startedRef.current = true;
-      onGameStartRef.current(names);
+      onGameStartRef.current(roster);
     }
   }, [room, players]);
 
-  return { loading, room, players, myPlayer, isHost, error, toggleReady, setTurnTime, startGame };
+  const leaveRoom = useCallback(async () => {
+    if (!room || !myPlayer) return;
+    await requestLeaveRoom(room, myPlayer);
+    if (channelRef.current) sendLobbyUpdated(channelRef.current);
+  }, [room, myPlayer]);
+
+  return {
+    loading,
+    room,
+    players,
+    myPlayer,
+    isHost,
+    error,
+    toggleReady,
+    setTurnTime,
+    startGame,
+    leaveRoom,
+  };
 }

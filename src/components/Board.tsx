@@ -7,10 +7,12 @@ import { Tile } from './Tile';
 interface BoardProps {
   tileOwners: (string | null)[];
   players: Player[];
+  /** 엔진 player.id -> 현재 떠 있는 말풍선 텍스트 */
+  bubbles?: Record<string, string>;
   children?: React.ReactNode;
 }
 
-export function Board({ tileOwners, players, children }: BoardProps) {
+export function Board({ tileOwners, players, bubbles, children }: BoardProps) {
   return (
     <div className="board">
       {BOARD.map((tile) => {
@@ -33,6 +35,7 @@ export function Board({ tileOwners, players, children }: BoardProps) {
                   player={player}
                   stackIndex={i}
                   stackCount={tokensHere.length}
+                  bubbleText={bubbles?.[player.id]}
                 />
               ))}
             </div>

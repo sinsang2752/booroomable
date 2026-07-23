@@ -14,6 +14,12 @@ export interface RoomRow {
   created_at: string;
 }
 
+/** 게임 시작 시 로비가 게임 화면에 넘겨주는, seat_order 순 참가자 요약 */
+export interface GameRosterEntry {
+  clientId: string;
+  nickname: string;
+}
+
 export interface LobbyPlayer {
   id: string;
   room_id: string;
