@@ -3,6 +3,7 @@ import { fetchGameSnapshot, submitAction, submitForfeit, submitTimeoutCheck } fr
 import { dbToGameState } from '../game-sync/mapping';
 import { createGameChannel } from '../game-sync/realtime';
 import { getClientId } from '../lib/identity';
+import { getServerNow } from '../lib/serverClock';
 import { supabase } from '../lib/supabaseClient';
 import type { GamePlayerRow, RoomRow } from '../lobby/types';
 
@@ -92,7 +93,7 @@ export function useSyncedGame(roomId: string) {
     const interval = setInterval(() => {
       if (isSubmittingRef.current || !room || !state || state.phase === 'game-over') return;
 
-      const elapsedSec = (Date.now() - new Date(room.turn_started_at ?? 0).getTime()) / 1000;
+      const elapsedSec = (getServerNow() - new Date(room.turn_started_at ?? 0).getTime()) / 1000;
       if (elapsedSec < room.turn_time_sec) return;
 
       // 실제 시간 초과 여부/선점/자동행동은 Edge Function이 서버에서 다시 확인하고 처리한다.

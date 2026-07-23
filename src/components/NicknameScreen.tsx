@@ -27,7 +27,7 @@ export function NicknameScreen({ onSubmit }: NicknameScreenProps) {
           if (e.key === 'Enter') handleSubmit();
         }}
       />
-      <button type="button" onClick={handleSubmit} disabled={!nickname.trim()}>
+      <button type="button" className="start-button" onClick={handleSubmit} disabled={!nickname.trim()}>
         다음
       </button>
     </div>

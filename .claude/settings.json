@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where chromium-cli *)",
+      "Bash(chromium-cli --help)",
+      "Bash(npx --yes playwright --version)"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes playwright install chromium)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\HyunSang\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-HyunSang-Desktop----booroomable\\\\70d43aed-6766-4af9-892d-4d4e5fa89db8\\\\scratchpad\\\\pw\")",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(timeout 30 bash -c 'until curl -sf http://localhost:5173 >/dev/null; do sleep 1; done')",
+      "Bash(node measure.js)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 20612)",
+      "Bash(node measure2.js)",
+      "PowerShell(Add-Type -AssemblyName System.Windows.Forms; $s = [System.Windows.Forms.Screen]::PrimaryScreen; \"{0}x{1}\" -f $s.Bounds.Width, $s.Bounds.Height)",
+      "Bash(node measure3.js)",
+      "Bash(node clockskew.js)",
+      "Bash(node dragbar.js)"
+    ]
+  }
+}
