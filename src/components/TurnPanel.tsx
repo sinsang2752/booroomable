@@ -13,6 +13,7 @@ interface TurnPanelProps {
   onRoll: () => void;
   onDecide: (buy: boolean) => void;
   onDecideBuild: (build: boolean) => void;
+  onSkipStartBonusBuild: () => void;
   onForfeit: () => void;
 }
 
@@ -26,6 +27,7 @@ export function TurnPanel({
   onRoll,
   onDecide,
   onDecideBuild,
+  onSkipStartBonusBuild,
   onForfeit,
 }: TurnPanelProps) {
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -107,6 +109,15 @@ export function TurnPanel({
           </button>
           <button type="button" onClick={() => onDecideBuild(false)} disabled={isSubmitting}>
             패스
+          </button>
+        </div>
+      )}
+
+      {isMyTurn && state.phase === 'awaiting-start-bonus-build' && (
+        <div className="purchase-prompt">
+          <p className="turn-panel-wait">보드에서 업그레이드할 땅을 골라주세요.</p>
+          <button type="button" onClick={onSkipStartBonusBuild} disabled={isSubmitting}>
+            건너뛰기
           </button>
         </div>
       )}

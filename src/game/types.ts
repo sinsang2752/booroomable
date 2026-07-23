@@ -7,6 +7,7 @@ export type TurnPhase =
   | 'awaiting-purchase-decision'
   | 'awaiting-build-decision'
   | 'awaiting-initial-build-decision'
+  | 'awaiting-start-bonus-build'
   | 'game-over';
 
 export interface Tile {
@@ -49,4 +50,5 @@ export type GameAction =
   | { type: 'ROLL_DICE' }
   | { type: 'DECIDE_PURCHASE'; buy: boolean }
   | { type: 'DECIDE_BUILD'; build: boolean }
+  | { type: 'DECIDE_START_BONUS_BUILD'; tileIdx: number | null }
   | { type: 'FORFEIT'; playerId: string };

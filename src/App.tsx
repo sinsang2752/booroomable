@@ -6,6 +6,9 @@ import { MainScreen } from './components/MainScreen';
 import { NicknameScreen } from './components/NicknameScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { TurnPanel } from './components/TurnPanel';
+import { BOARD } from './game/board';
+import { getStartBonusEligibleTiles, getUpgradeCost } from './game/buildings';
+import { BUILDING_LEVEL_NAMES } from './game/config';
 import { useLobby } from './hooks/useLobby';
 import { useRoomChat } from './hooks/useRoomChat';
 import { useSyncedGame } from './hooks/useSyncedGame';
@@ -36,9 +39,11 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
     rollDice,
     decidePurchase,
     decideBuild,
+    decideStartBonusBuild,
     forfeit,
   } = useSyncedGame(roomId);
-  const myNickname = dbPlayers.find((p) => p.client_id === clientId)?.nickname ?? '';
+  const myPlayer = dbPlayers.find((p) => p.client_id === clientId);
+  const myNickname = myPlayer?.nickname ?? '';
   const { messages, sendMessage } = useRoomChat(roomId, clientId, myNickname);
 
   const enginePlayerIdByClientId = useMemo(() => {
@@ -81,6 +86,20 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
     [],
   );
 
+  const selectableTiles = useMemo(() => {
+    if (!state || !myPlayer || !isMyTurn || state.phase !== 'awaiting-start-bonus-build') {
+      return undefined;
+    }
+    const map = new Map<number, string>();
+    for (const idx of getStartBonusEligibleTiles(state, myPlayer.id)) {
+      const level = state.tileLevels[idx];
+      const cost = getUpgradeCost(idx, level);
+      const nextLevelName = BUILDING_LEVEL_NAMES[level + 1];
+      map.set(idx, `${BOARD[idx].name} → ${nextLevelName}(으)로 업그레이드 (${cost})`);
+    }
+    return map;
+  }, [state, myPlayer, isMyTurn]);
+
   if (error) {
     return (
       <div className="game-screen">
@@ -102,6 +121,8 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
         tileLevels={state.tileLevels}
         players={state.players}
         bubbles={bubbles}
+        selectableTiles={selectableTiles}
+        onSelectTile={decideStartBonusBuild}
       >
         {state.phase === 'game-over' ? (
           <ResultScreen winnerName={winner?.name ?? null} onRestart={onRestart} />
@@ -117,6 +138,7 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
               onRoll={rollDice}
               onDecide={decidePurchase}
               onDecideBuild={decideBuild}
+              onSkipStartBonusBuild={() => decideStartBonusBuild(null)}
               onForfeit={forfeit}
             />
             <input

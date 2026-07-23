@@ -46,6 +46,7 @@ export async function submitAction(roomId: string, action: GameAction): Promise<
     type: action.type,
     ...(action.type === 'DECIDE_PURCHASE' ? { buy: action.buy } : {}),
     ...(action.type === 'DECIDE_BUILD' ? { build: action.build } : {}),
+    ...(action.type === 'DECIDE_START_BONUS_BUILD' ? { tileIdx: action.tileIdx } : {}),
   });
 }
 

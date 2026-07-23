@@ -19,8 +19,8 @@
 **3단계 구현 순서 (한 슬라이스씩, 각 슬라이스마다 플레이 가능한 상태 유지)**
 
 1. **건물 시스템** ← 여기부터. 나머지 룰이 전부 건물 수/등급에 의존하므로 반드시 먼저.
-   - **구현 완료**: 자기 땅 재방문 시 한 등급씩 업그레이드(레벨 0~4, 통행료/건설비 배율은 아래 표 그대로) + **최초 구매 시 감당되는 데까지 반복해서 즉시건축**(`awaiting-initial-build-decision` phase, `src/game/engine.ts`의 `offerInitialBuild` 헬퍼).
-   - **아직 안 한 것 (이어서 진행)**: 출발칸 정확 도착 보너스, 파산 방지용 건물 자동매각, `landmark` 칸.
+   - **구현 완료**: 자기 땅 재방문 시 한 등급씩 업그레이드(레벨 0~4, 통행료/건설비 배율은 아래 표 그대로) + **최초 구매 시 감당되는 데까지 반복해서 즉시건축**(`awaiting-initial-build-decision` phase) + **출발칸 정확 도착 보너스**(`awaiting-start-bonus-build` phase, 보드에서 업그레이드할 땅을 직접 클릭해서 고름). 세 흐름이 공유하는 "업그레이드 가능한가/비용" 계산은 `src/game/buildings.ts`에 순수 함수로 모아둠.
+   - **아직 안 한 것 (이어서 진행)**: 파산 방지용 건물 자동매각, `landmark` 칸.
 2. **황금열쇠** (1차: 상금·벌금·이동 카드만. 건물유지비/반액대매출은 1번 완료 후)
 3. **사회복지기금** (기부 칸 + 수령 칸) — 기존 "세금" 항목을 이걸로 대체
 4. **우주여행** (원하는 칸 이동 + 자동 배치)
@@ -101,7 +101,7 @@
   - 재방문 시에는 **한 번에 한 등급씩** 상승.
 - **자동 기본값**: 자동진행으로 넘어간 경우 건물은 짓지 않는다(패스). 구매도 현행대로 자동 패스.
 
-**예외 — 출발칸 정확 도착 보너스 (도입 확정)**
+**예외 — 출발칸 정확 도착 보너스 (구현 완료)**
 주사위 눈이 딱 맞아 **출발 칸에 정확히 멈춘 경우에 한해, 자기 소유 땅 중 아무 곳이나 하나를 골라 한 등급 올릴 수 있다.** (모바일 모두의마블의 출발지 보너스 규칙. 원작 부루마불에도 특수능력 변형룰로 소개되어 있음)
 - 상시 자유 건축은 방치형과 안 맞아 채용하지 않지만, **출발칸 정확 도착이라는 낮은 빈도로 제한하면** 부담 없이 전략성만 챙길 수 있다. 한 바퀴에 한 번 올까 말까 한 기회라 "이번엔 어디에 지을까"를 고민할 만한 순간이 된다.
 - 세부 규칙:
@@ -111,7 +111,8 @@
   - 대상에서 제외: 이미 호텔(level 4)인 땅, `landmark`(건물 못 짓는 땅), 소유하지 않은 땅.
   - 지을 수 있는 땅이 하나도 없으면 선택 단계를 건너뛴다.
 - **자동 기본값**: 제한시간 내에 고르지 않으면 **아무것도 짓지 않고 그대로 턴을 넘긴다.**
-- UI: 보드에서 업그레이드 가능한 자기 땅을 하이라이트하고, 각 칸에 다음 등급과 건설비를 표시. "건너뛰기" 버튼도 제공.
+- UI: 보드에서 업그레이드 가능한 자기 땅을 하이라이트(테두리 펄스 효과)하고, 칸에 마우스를 올리면 다음 등급/건설비가 툴팁으로 표시됨. "건너뛰기" 버튼도 제공.
+- `landmark` 칸은 아직 미도입이라 현재 "제외 대상"은 실질적으로 이미 호텔인 땅/소유하지 않은 땅 두 가지만 적용됨.
 
 **통행료 배율 (원작 실측 비율 기반, `config.ts`에 상수로)**
 원작 수치를 보면 건물 없는 대지료는 땅값의 6~10% 수준으로 매우 낮고, 호텔은 땅값의 4~5배까지 뛴다(예: 런던 땅값 35만 → 대지료 3.5만, 호텔 통행료 150만). 이 급격한 상승 곡선이 파산을 만드는 장치다. 우리 공식은 다음 배율로 시작하고 플레이하며 조정한다:
@@ -256,13 +257,13 @@
 `id` uuid PK · `code` text · `status` text(waiting/playing/finished) · `turn_time_sec` int · `current_player_id` uuid · `turn_number` int · `turn_started_at` timestamp · `host_client_id` text · `created_at` timestamp
 
 2단계 상태 동기화/자동진행을 위해 추가된 컬럼(엔진의 `GameState`를 그대로 담기 위함, `src/game-sync/mapping.ts` 참고):
-`phase` text(awaiting-roll/awaiting-purchase-decision/**awaiting-build-decision**/**awaiting-initial-build-decision**/game-over) · `last_roll_d1` int · `last_roll_d2` int · `is_double_roll` bool · `pending_purchase_tile_idx` int(구매 대기·재방문 건축 대기·최초구매 즉시건축 대기 셋 다 이 컬럼을 공용으로 씀 — phase로 구분) · `winner_player_id` uuid · `notice` text · `version` int (낙관적 동시성 가드, 액션마다 1씩 증가)
+`phase` text(awaiting-roll/awaiting-purchase-decision/**awaiting-build-decision**/**awaiting-initial-build-decision**/**awaiting-start-bonus-build**/game-over) · `last_roll_d1` int · `last_roll_d2` int · `is_double_roll` bool · `pending_purchase_tile_idx` int(구매 대기·재방문 건축 대기·최초구매 즉시건축 대기가 이 컬럼을 공용으로 씀 — phase로 구분. 출발칸 보너스는 대상 칸을 플레이어가 그때그때 고르므로 이 컬럼을 안 씀, `DECIDE_START_BONUS_BUILD` 액션 자체에 `tileIdx`를 실어 보냄) · `winner_player_id` uuid · `notice` text · `version` int (낙관적 동시성 가드, 액션마다 1씩 증가)
 
-`awaiting-build-decision`(재방문, 한 번에 한 단계)과 `awaiting-initial-build-decision`(최초구매 직후, 감당되는 데까지 반복)은 3단계 건물 시스템에서 추가됨 — 새 컬럼 없이 기존 `pending_purchase_tile_idx`를 재사용.
+`awaiting-build-decision`(재방문, 한 번에 한 단계) / `awaiting-initial-build-decision`(최초구매 직후, 감당되는 데까지 반복) / `awaiting-start-bonus-build`(출발칸 정확 도착, 보유 땅 중 하나 선택)는 3단계 건물 시스템에서 추가됨 — 새 컬럼 없이 기존 컬럼 재사용.
 
 3단계에서 추가로 필요 (건물 시스템의 남은 하위 항목 + 다른 3단계 룰):
 `welfare_pool` int (사회복지기금 적립액) · `consecutive_doubles` int (더블 3연속 → 무인도 판정용, 턴 종료 시 0으로 리셋) · `event_deck` jsonb (황금열쇠 덱의 남은 카드 순서 — 셔플 결과를 서버가 들고 있어야 클라이언트가 다음 카드를 미리 못 봄)
-- `phase`에 다음 추가 필요: `awaiting-space-travel-destination`(우주여행 칸 도착 → 목적지 선택) / `awaiting-start-bonus-build`(출발칸 정확 도착 → 자기 땅 중 하나 업그레이드).
+- `phase`에 다음 추가 필요: `awaiting-space-travel-destination`(우주여행 칸 도착 → 목적지 선택).
 
 ### `players`
 | 컬럼 | 타입 | 성격 |
@@ -295,7 +296,7 @@
 ### `ownerships`
 `id` uuid PK · `room_id` uuid FK · `tile_idx` int FK · `player_id` uuid FK · `level` int(프로토타입 0, 건물은 P1)
 `unique(room_id, tile_idx)` 제약으로 같은 칸 중복 구매 방지.
-> 3단계: `level`을 실제로 사용 — 0=땅만 / 1=별장1 / 2=별장2 / 3=빌딩 / 4=호텔. **재방문 업그레이드 + 최초구매 즉시건축 둘 다 구현 완료** (`gameReducer`의 `DECIDE_BUILD` 액션, `awaiting-build-decision`/`awaiting-initial-build-decision` phase). 출발칸 보너스/자동매각은 아직. 건물유지비 카드가 "플레이어별 등급별 건물 개수"를 세야 하므로, 이 테이블을 player_id로 집계하면 되도록 유지.
+> 3단계: `level`을 실제로 사용 — 0=땅만 / 1=별장1 / 2=별장2 / 3=빌딩 / 4=호텔. **재방문 업그레이드 + 최초구매 즉시건축 + 출발칸 정확 도착 보너스 셋 다 구현 완료**(`src/game/buildings.ts`의 공용 계산 + `gameReducer`의 `DECIDE_BUILD`/`DECIDE_START_BONUS_BUILD` 액션). 파산 시 건물 자동매각은 아직. 건물유지비 카드가 "플레이어별 등급별 건물 개수"를 세야 하므로, 이 테이블을 player_id로 집계하면 되도록 유지.
 
 ### `chat_messages` (선택)
 `id` uuid PK · `room_id` uuid FK · `player_id` uuid FK · `body` text · `created_at` timestamp

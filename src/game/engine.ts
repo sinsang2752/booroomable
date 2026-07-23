@@ -1,11 +1,10 @@
 import { BOARD } from './board.ts';
+import { getStartBonusEligibleTiles, getUpgradeCost } from './buildings.ts';
 import {
   BOARD_SIZE,
   BUILDING_LEVEL_NAMES,
   BUILDING_TOLL_LEVEL_MULTIPLIERS,
-  BUILDING_UPGRADE_COST_RATIOS,
   DICE_SIDES,
-  MAX_BUILDING_LEVEL,
   PLAYER_COLORS,
   SALARY_ON_PASS_START,
   START_TILE_IDX,
@@ -52,6 +51,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return handleDecidePurchase(state, action.buy);
     case 'DECIDE_BUILD':
       return handleDecideBuild(state, action.build);
+    case 'DECIDE_START_BONUS_BUILD':
+      return handleDecideStartBonusBuild(state, action.tileIdx);
     case 'FORFEIT':
       return handleForfeit(state, action.playerId);
     default:
@@ -96,18 +97,16 @@ function handleRollDice(state: GameState): GameState {
     const level = tileLevels[newPos];
 
     if (ownerId === currentPlayer.id) {
-      if (level >= MAX_BUILDING_LEVEL) {
+      const upgradeCost = getUpgradeCost(newPos, level);
+      if (upgradeCost === null) {
         // 이미 최고 레벨: 아무 일도 일어나지 않음
+      } else if (currentPlayer.balance < upgradeCost) {
+        notice = `${currentPlayer.name}님이 ${tile.name} 건물을 올릴 돈이 없어 지나갑니다.`;
       } else {
-        const upgradeCost = Math.round((tile.price ?? 0) * BUILDING_UPGRADE_COST_RATIOS[level]);
         const nextLevelName = BUILDING_LEVEL_NAMES[level + 1];
-        if (currentPlayer.balance < upgradeCost) {
-          notice = `${currentPlayer.name}님이 ${tile.name} 건물을 올릴 돈이 없어 지나갑니다.`;
-        } else {
-          phase = 'awaiting-build-decision';
-          pendingPurchaseTileIdx = newPos;
-          notice = `${currentPlayer.name}님, ${tile.name}을(를) ${nextLevelName}(으)로 업그레이드하시겠습니까? (${upgradeCost})`;
-        }
+        phase = 'awaiting-build-decision';
+        pendingPurchaseTileIdx = newPos;
+        notice = `${currentPlayer.name}님, ${tile.name}을(를) ${nextLevelName}(으)로 업그레이드하시겠습니까? (${upgradeCost})`;
       }
     } else if (ownerId) {
       const toll = (tile.toll ?? 0) * BUILDING_TOLL_LEVEL_MULTIPLIERS[level];
@@ -131,6 +130,14 @@ function handleRollDice(state: GameState): GameState {
       pendingPurchaseTileIdx = newPos;
       notice = `${currentPlayer.name}님, ${tile.name}(${tile.price}) 구매하시겠습니까?`;
     }
+  } else if (tile.type === 'start' && wrapped) {
+    // 주사위 합이 최대 12·위치가 0~39라 rawNewPos가 40의 배수가 되는 경우는 40 하나뿐이라,
+    // 여기 들어왔다는 것 자체가 이미 "출발점에 정확히 도착"했다는 뜻이다(그냥 지나친 경우는 newPos가 0이 될 수 없음).
+    const eligibleTiles = getStartBonusEligibleTiles({ ...state, players, tileOwners, tileLevels }, currentPlayer.id);
+    if (eligibleTiles.length > 0) {
+      phase = 'awaiting-start-bonus-build';
+      notice = `${currentPlayer.name}님이 출발점에 정확히 도착했습니다! 업그레이드할 땅을 골라주세요.`;
+    }
   }
 
   const rolledState: GameState = {
@@ -144,7 +151,11 @@ function handleRollDice(state: GameState): GameState {
     notice,
   };
 
-  if (phase === 'awaiting-purchase-decision' || phase === 'awaiting-build-decision') {
+  if (
+    phase === 'awaiting-purchase-decision' ||
+    phase === 'awaiting-build-decision' ||
+    phase === 'awaiting-start-bonus-build'
+  ) {
     return rolledState;
   }
 
@@ -158,12 +169,8 @@ function offerInitialBuild(state: GameState, tileIdx: number): GameState {
   const currentPlayer = state.players[state.currentPlayerIndex];
   const level = state.tileLevels[tileIdx];
 
-  if (level >= MAX_BUILDING_LEVEL) {
-    return finishTurnStep(state, state.isDoubleRoll);
-  }
-
-  const upgradeCost = Math.round((tile.price ?? 0) * BUILDING_UPGRADE_COST_RATIOS[level]);
-  if (currentPlayer.balance < upgradeCost) {
+  const upgradeCost = getUpgradeCost(tileIdx, level);
+  if (upgradeCost === null || currentPlayer.balance < upgradeCost) {
     return finishTurnStep(state, state.isDoubleRoll);
   }
 
@@ -230,9 +237,9 @@ function handleDecideBuild(state: GameState, build: boolean): GameState {
   let built = false;
 
   const currentLevel = tileLevels[tileIdx];
-  const upgradeCost = Math.round((tile.price ?? 0) * BUILDING_UPGRADE_COST_RATIOS[currentLevel]);
+  const upgradeCost = getUpgradeCost(tileIdx, currentLevel);
 
-  if (build && currentPlayer.balance >= upgradeCost) {
+  if (build && upgradeCost !== null && currentPlayer.balance >= upgradeCost) {
     currentPlayer.balance -= upgradeCost;
     tileLevels = [...tileLevels];
     tileLevels[tileIdx] += 1;
@@ -254,6 +261,43 @@ function handleDecideBuild(state: GameState, build: boolean): GameState {
   if (isInitial && built) {
     return offerInitialBuild(resolvedState, tileIdx);
   }
+  return finishTurnStep(resolvedState, state.isDoubleRoll);
+}
+
+/** 출발점 정확 도착 보너스: 소유한 땅 중 하나를 골라 한 등급 올린다. tileIdx가 null이면 건너뛰기.
+ * 클라이언트가 보낸 tileIdx를 그대로 믿지 않고 소유주/레벨/잔액을 서버가 다시 검증한다 —
+ * 유효하지 않으면(레이스 컨디션 등) 에러 없이 조용히 스킵한다(보너스라 실패해도 진행이 막히면 안 됨). */
+function handleDecideStartBonusBuild(state: GameState, tileIdx: number | null): GameState {
+  if (state.phase !== 'awaiting-start-bonus-build') return state;
+
+  if (tileIdx === null) {
+    return finishTurnStep({ ...state, phase: 'awaiting-roll' }, state.isDoubleRoll);
+  }
+
+  const players = state.players.map((p) => ({ ...p }));
+  const currentPlayer = players[state.currentPlayerIndex];
+  const level = state.tileLevels[tileIdx];
+  const upgradeCost = getUpgradeCost(tileIdx, level);
+
+  let tileLevels = state.tileLevels;
+  let notice = state.notice;
+
+  if (state.tileOwners[tileIdx] === currentPlayer.id && upgradeCost !== null && currentPlayer.balance >= upgradeCost) {
+    const tile = BOARD[tileIdx];
+    currentPlayer.balance -= upgradeCost;
+    tileLevels = [...tileLevels];
+    tileLevels[tileIdx] += 1;
+    notice = `${currentPlayer.name}님이 출발점 보너스로 ${tile.name}을(를) ${BUILDING_LEVEL_NAMES[tileLevels[tileIdx]]}(으)로 업그레이드했습니다.`;
+  }
+
+  const resolvedState: GameState = {
+    ...state,
+    players,
+    tileLevels,
+    phase: 'awaiting-roll',
+    notice,
+  };
+
   return finishTurnStep(resolvedState, state.isDoubleRoll);
 }
 

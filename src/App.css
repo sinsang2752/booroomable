@@ -224,6 +224,17 @@
   background: color-mix(in srgb, var(--color-red) 20%, var(--bg));
 }
 
+.tile--selectable {
+  cursor: pointer;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-amber) 60%, transparent);
+  animation: tile-selectable-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes tile-selectable-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-amber) 40%, transparent); }
+  50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-amber) 90%, transparent); }
+}
+
 .tile-label {
   font-weight: 600;
 }
