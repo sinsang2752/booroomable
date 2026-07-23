@@ -1,4 +1,5 @@
-import { MAX_PLAYERS, PLAYER_COLORS, START_TILE_IDX, STARTING_BALANCE } from '../game/config';
+import { MAX_PLAYERS, PLAYER_COLORS } from '../game/config';
+import { extractFunctionErrorMessage } from '../lib/functionsError';
 import { getClientId } from '../lib/identity';
 import { supabase } from '../lib/supabaseClient';
 import { generateRoomCode } from './roomCode';
@@ -145,43 +146,14 @@ export async function setTurnTimeSec(roomId: string, turnTimeSec: number): Promi
   if (error) throw error;
 }
 
-/** 방장이 시작을 누른 순간 호출: 참가자들의 게임 상태를 초기화하고 방을 진행중으로 바꾼다.
- * players를 먼저 세팅한 뒤 rooms를 마지막에 바꿔서, 다른 클라이언트가 status==='playing'을
- * 보고 반응할 때는 이미 players 초기화가 끝나 있게 한다. */
-export async function startGame(roomId: string, players: LobbyPlayer[]): Promise<void> {
-  const orderedPlayers = [...players].sort((a, b) => a.seat_order - b.seat_order);
-  const firstPlayer = orderedPlayers[0];
-  if (!firstPlayer) throw new LobbyError('참가자가 없습니다.');
-
-  const { error: resetError } = await supabase
-    .from('players')
-    .update({
-      balance: STARTING_BALANCE,
-      position: START_TILE_IDX,
-      is_bankrupt: false,
-      skip_next_turn: false,
-    })
-    .eq('room_id', roomId);
-  if (resetError) throw resetError;
-
-  const { error: roomError } = await supabase
-    .from('rooms')
-    .update({
-      status: 'playing',
-      phase: 'awaiting-roll',
-      current_player_id: firstPlayer.id,
-      turn_number: 1,
-      turn_started_at: new Date().toISOString(),
-      last_roll_d1: null,
-      last_roll_d2: null,
-      is_double_roll: false,
-      pending_purchase_tile_idx: null,
-      winner_player_id: null,
-      notice: null,
-      version: 0,
-    })
-    .eq('id', roomId);
-  if (roomError) throw roomError;
+/** 방장이 시작을 누른 순간 호출: 실제 시딩(참가자 초기화 + 방 상태 전환)은
+ * Edge Function이 방장인지 확인한 뒤 서버에서 처리한다. */
+export async function startGame(roomId: string): Promise<void> {
+  const clientId = getClientId();
+  const { error } = await supabase.functions.invoke('game-action', {
+    body: { roomId, clientId, type: 'START_GAME' },
+  });
+  if (error) throw new LobbyError(await extractFunctionErrorMessage(error));
 }
 
 /** 로비를 나간다. 방장이 나가면 남은 사람 중 가장 먼저 들어온 사람에게 방장을 넘기고,

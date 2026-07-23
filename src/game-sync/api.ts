@@ -1,8 +1,8 @@
-import { gameReducer } from '../game/engine';
 import type { GameAction } from '../game/types';
+import { extractFunctionErrorMessage } from '../lib/functionsError';
+import { getClientId } from '../lib/identity';
 import { supabase } from '../lib/supabaseClient';
 import type { GamePlayerRow, OwnershipRow, RoomRow } from '../lobby/types';
-import { computePatches, dbToGameState } from './mapping';
 
 export interface GameSnapshot {
   room: RoomRow;
@@ -32,68 +32,30 @@ export async function fetchGameSnapshot(roomId: string): Promise<GameSnapshot> {
   };
 }
 
-/**
- * 최신 스냅샷을 읽어서 engine.ts의 gameReducer를 그대로 실행하고, 결과를 DB에 반영한다.
- * players/ownerships를 먼저 쓰고 rooms를 version 낙관적 락과 함께 마지막에 쓴다 — 자세한 이유는
- * 계획 문서 참고. version이 어긋나면(동시에 다른 요청이 먼저 반영됨) 에러를 던지고, 최신 상태는
- * Postgres Changes 구독으로 곧 들어온다.
- */
-export async function submitAction(roomId: string, action: GameAction): Promise<void> {
-  const snapshot = await fetchGameSnapshot(roomId);
-  const oldState = dbToGameState(snapshot.room, snapshot.players, snapshot.ownerships);
-  const newState = gameReducer(oldState, action);
-  const { roomPatch, playerPatches, newOwnership } = computePatches(oldState, newState);
-
-  const playerResults = await Promise.all(
-    playerPatches.map((patch) =>
-      supabase
-        .from('players')
-        .update({
-          position: patch.position,
-          balance: patch.balance,
-          is_bankrupt: patch.is_bankrupt,
-          skip_next_turn: patch.skip_next_turn,
-        })
-        .eq('id', patch.id),
-    ),
-  );
-  for (const result of playerResults) {
-    if (result.error) throw result.error;
-  }
-
-  if (newOwnership) {
-    const { error: ownershipError } = await supabase.from('ownerships').upsert(
-      { room_id: roomId, tile_idx: newOwnership.tile_idx, player_id: newOwnership.player_id },
-      { onConflict: 'room_id,tile_idx', ignoreDuplicates: true },
-    );
-    if (ownershipError) throw ownershipError;
-  }
-
-  const { data: updatedRooms, error: roomError } = await supabase
-    .from('rooms')
-    .update({ ...roomPatch, turn_started_at: new Date().toISOString(), version: snapshot.room.version + 1 })
-    .eq('id', roomId)
-    .eq('version', snapshot.room.version)
-    .select();
-  if (roomError) throw roomError;
-  if (!updatedRooms || updatedRooms.length === 0) {
-    throw new Error('다른 요청이 먼저 처리되었습니다. 최신 상태를 다시 불러옵니다.');
-  }
+async function invokeGameAction(payload: Record<string, unknown>): Promise<void> {
+  const { error } = await supabase.functions.invoke('game-action', { body: payload });
+  if (error) throw new Error(await extractFunctionErrorMessage(error));
 }
 
-/**
- * 턴 타이머가 만료됐을 때, 접속한 여러 클라이언트가 동시에 자동 행동을 시도하지 않도록
- * version을 조건부로 먼저 한 번 올려서 "이번 타임아웃은 내가 처리한다"를 선점한다.
- * 1행이 바뀌면 선점 성공 — 그 다음에 submitAction으로 실제 자동 행동을 제출하면 된다.
- * 0행이면 이미 누군가 처리했거나 상태가 바뀐 것이니 조용히 넘어가면 된다.
- */
-export async function claimTurnTimeout(roomId: string, expectedVersion: number): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('rooms')
-    .update({ version: expectedVersion + 1 })
-    .eq('id', roomId)
-    .eq('version', expectedVersion)
-    .select();
-  if (error) throw error;
-  return !!data && data.length === 1;
+/** 실제 규칙 계산은 이제 Edge Function(서비스 롤 키)이 하고, 여기서는 요청만 보낸다. */
+export async function submitAction(roomId: string, action: GameAction): Promise<void> {
+  const clientId = getClientId();
+  await invokeGameAction({
+    roomId,
+    clientId,
+    type: action.type,
+    ...(action.type === 'DECIDE_PURCHASE' ? { buy: action.buy } : {}),
+    ...(action.type === 'DECIDE_BUILD' ? { build: action.build } : {}),
+  });
+}
+
+/** 턴 타이머 만료 여부/선점/자동행동을 전부 Edge Function이 서버에서 재확인하고 처리한다. */
+export async function submitTimeoutCheck(roomId: string): Promise<void> {
+  await invokeGameAction({ roomId, type: 'CLAIM_TIMEOUT' });
+}
+
+/** 게임 포기. 내 턴이 아니어도 언제든 가능 — 서버가 client_id로 내 player 행을 찾아 처리한다. */
+export async function submitForfeit(roomId: string): Promise<void> {
+  const clientId = getClientId();
+  await invokeGameAction({ roomId, clientId, type: 'FORFEIT' });
 }

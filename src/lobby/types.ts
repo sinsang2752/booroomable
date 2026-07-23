@@ -1,4 +1,4 @@
-import type { PlayerColor } from '../game/types';
+import type { PlayerColor } from '../game/types.ts';
 
 export type RoomStatus = 'waiting' | 'playing' | 'finished';
 export type GamePhase = 'awaiting-roll' | 'awaiting-purchase-decision' | 'game-over';

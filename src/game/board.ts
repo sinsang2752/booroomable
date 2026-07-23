@@ -5,8 +5,8 @@ import {
   LAND_PRICE_STEP,
   LAND_TOLL_RATIO,
   START_TILE_IDX,
-} from './config';
-import type { Tile } from './types';
+} from './config.ts';
+import type { Tile } from './types.ts';
 
 function buildBoard(): Tile[] {
   const tiles: Tile[] = [];

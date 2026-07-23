@@ -6,13 +6,14 @@ import { Tile } from './Tile';
 
 interface BoardProps {
   tileOwners: (string | null)[];
+  tileLevels: number[];
   players: Player[];
   /** 엔진 player.id -> 현재 떠 있는 말풍선 텍스트 */
   bubbles?: Record<string, string>;
   children?: React.ReactNode;
 }
 
-export function Board({ tileOwners, players, bubbles, children }: BoardProps) {
+export function Board({ tileOwners, tileLevels, players, bubbles, children }: BoardProps) {
   return (
     <div className="board">
       {BOARD.map((tile) => {
@@ -27,7 +28,7 @@ export function Board({ tileOwners, players, bubbles, children }: BoardProps) {
             className="board-cell"
             style={{ left: `${pos.xPct}%`, top: `${pos.yPct}%` }}
           >
-            <Tile tile={tile} ownerColor={owner?.color ?? null} />
+            <Tile tile={tile} ownerColor={owner?.color ?? null} level={tileLevels[tile.idx]} />
             <div className="board-cell-tokens">
               {tokensHere.map((player, i) => (
                 <PlayerToken

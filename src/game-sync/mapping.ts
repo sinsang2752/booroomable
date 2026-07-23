@@ -1,6 +1,6 @@
-import { BOARD_SIZE } from '../game/config';
-import type { GameState } from '../game/types';
-import type { GamePlayerRow, OwnershipRow, RoomRow } from '../lobby/types';
+import { BOARD_SIZE } from '../game/config.ts';
+import type { GameState } from '../game/types.ts';
+import type { GamePlayerRow, OwnershipRow, RoomRow } from '../lobby/types.ts';
 
 /** DB 행들(rooms/players/ownerships)로부터 engine.ts가 그대로 쓸 수 있는 GameState를 재구성한다.
  * players는 seat_order 순으로 정렬되어 들어온다고 가정. Player.id는 로컬 포맷("p1") 대신
@@ -11,8 +11,10 @@ export function dbToGameState(
   ownerships: OwnershipRow[],
 ): GameState {
   const tileOwners: (string | null)[] = Array(BOARD_SIZE).fill(null);
+  const tileLevels: number[] = Array(BOARD_SIZE).fill(0);
   for (const ownership of ownerships) {
     tileOwners[ownership.tile_idx] = ownership.player_id;
+    tileLevels[ownership.tile_idx] = ownership.level;
   }
 
   const currentPlayerIndex = players.findIndex((p) => p.id === room.current_player_id);
@@ -31,6 +33,7 @@ export function dbToGameState(
     })),
     currentPlayerIndex: currentPlayerIndex === -1 ? 0 : currentPlayerIndex,
     tileOwners,
+    tileLevels,
     lastRoll:
       room.last_roll_d1 !== null && room.last_roll_d2 !== null
         ? [room.last_roll_d1, room.last_roll_d2]
@@ -64,15 +67,16 @@ export interface PlayerPatch {
   skip_next_turn: boolean;
 }
 
-export interface NewOwnership {
+export interface OwnershipPatch {
   tile_idx: number;
   player_id: string;
+  level: number;
 }
 
 export interface GameStatePatches {
   roomPatch: RoomPatch;
   playerPatches: PlayerPatch[];
-  newOwnership: NewOwnership | null;
+  ownershipPatch: OwnershipPatch | null;
 }
 
 /** gameReducer 실행 전/후 GameState를 비교해서 DB에 쓸 값들을 뽑아낸다. */
@@ -98,13 +102,17 @@ export function computePatches(oldState: GameState, newState: GameState): GameSt
     skip_next_turn: p.skipNextTurn,
   }));
 
-  let newOwnership: NewOwnership | null = null;
+  let ownershipPatch: OwnershipPatch | null = null;
   for (let idx = 0; idx < newState.tileOwners.length; idx += 1) {
-    if (oldState.tileOwners[idx] === null && newState.tileOwners[idx] !== null) {
-      newOwnership = { tile_idx: idx, player_id: newState.tileOwners[idx] as string };
+    const newOwnerId = newState.tileOwners[idx];
+    if (newOwnerId === null) continue;
+    const ownerChanged = oldState.tileOwners[idx] !== newOwnerId;
+    const levelChanged = oldState.tileLevels[idx] !== newState.tileLevels[idx];
+    if (ownerChanged || levelChanged) {
+      ownershipPatch = { tile_idx: idx, player_id: newOwnerId, level: newState.tileLevels[idx] };
       break;
     }
   }
 
-  return { roomPatch, playerPatches, newOwnership };
+  return { roomPatch, playerPatches, ownershipPatch };
 }

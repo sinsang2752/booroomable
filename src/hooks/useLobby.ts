@@ -83,13 +83,13 @@ export function useLobby(roomId: string, onGameStart: () => void) {
 
   const startGame = useCallback(async () => {
     if (!room) return;
-    await requestStartGame(room.id, players);
+    await requestStartGame(room.id);
     if (channelRef.current) sendGameStarted(channelRef.current);
     if (!startedRef.current) {
       startedRef.current = true;
       onGameStartRef.current();
     }
-  }, [room, players]);
+  }, [room]);
 
   const leaveRoom = useCallback(async () => {
     if (!room || !myPlayer) return;

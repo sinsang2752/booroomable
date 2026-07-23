@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { claimTurnTimeout, fetchGameSnapshot, submitAction } from '../game-sync/api';
+import { fetchGameSnapshot, submitAction, submitForfeit, submitTimeoutCheck } from '../game-sync/api';
 import { dbToGameState } from '../game-sync/mapping';
 import { createGameChannel } from '../game-sync/realtime';
 import { getClientId } from '../lib/identity';
@@ -41,14 +41,16 @@ export function useSyncedGame(roomId: string) {
 
   const myPlayerId = dbPlayers.find((p) => p.client_id === clientId)?.id ?? null;
   const isMyTurn = state !== null && myPlayerId !== null && state.players[state.currentPlayerIndex].id === myPlayerId;
+  const myPlayer = state?.players.find((p) => p.id === myPlayerId) ?? null;
+  const isEliminated = myPlayer?.isBankrupt ?? false;
 
-  const submit = useCallback(
-    async (action: Parameters<typeof submitAction>[1]) => {
+  const runSubmission = useCallback(
+    async (request: () => Promise<void>) => {
       if (isSubmittingRef.current) return;
       isSubmittingRef.current = true;
       setIsSubmitting(true);
       try {
-        await submitAction(roomId, action);
+        await request();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -57,11 +59,21 @@ export function useSyncedGame(roomId: string) {
         setIsSubmitting(false);
       }
     },
-    [roomId, refresh],
+    [refresh],
+  );
+
+  const submit = useCallback(
+    (action: Parameters<typeof submitAction>[1]) => runSubmission(() => submitAction(roomId, action)),
+    [roomId, runSubmission],
   );
 
   const rollDice = useCallback(() => submit({ type: 'ROLL_DICE' }), [submit]);
   const decidePurchase = useCallback((buy: boolean) => submit({ type: 'DECIDE_PURCHASE', buy }), [submit]);
+  const decideBuild = useCallback((build: boolean) => submit({ type: 'DECIDE_BUILD', build }), [submit]);
+  const forfeit = useCallback(
+    () => runSubmission(() => submitForfeit(roomId)),
+    [roomId, runSubmission],
+  );
 
   // 턴 타이머 자동 진행: 방에 접속한 아무 클라이언트나 시간 초과를 감지해 대신 행동한다.
   useEffect(() => {
@@ -71,15 +83,9 @@ export function useSyncedGame(roomId: string) {
       const elapsedSec = (Date.now() - new Date(room.turn_started_at ?? 0).getTime()) / 1000;
       if (elapsedSec < room.turn_time_sec) return;
 
-      claimTurnTimeout(roomId, room.version)
-        .then((claimed) => {
-          if (!claimed) return;
-          const autoAction =
-            state.phase === 'awaiting-purchase-decision'
-              ? ({ type: 'DECIDE_PURCHASE', buy: false } as const)
-              : ({ type: 'ROLL_DICE' } as const);
-          return submitAction(roomId, autoAction);
-        })
+      // 실제 시간 초과 여부/선점/자동행동은 Edge Function이 서버에서 다시 확인하고 처리한다.
+      // 여기서는 "임박했나" 가벼운 사전 체크만 해서 불필요한 호출을 줄인다.
+      submitTimeoutCheck(roomId)
         .then(() => refresh())
         .catch((err) => console.error('턴 자동 진행 실패:', err));
     }, TIMEOUT_CHECK_INTERVAL_MS);
@@ -98,9 +104,13 @@ export function useSyncedGame(roomId: string) {
     loading,
     error,
     isMyTurn,
+    isEliminated,
     isSubmitting,
     turnDeadlineMs,
+    turnTimeSec: room?.turn_time_sec ?? null,
     rollDice,
     decidePurchase,
+    decideBuild,
+    forfeit,
   };
 }

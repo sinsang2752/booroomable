@@ -165,4 +165,44 @@ begin
 exception when duplicate_object then null;
 end $$;
 
--- RLS는 아직 켜지 않음: 로그인/Edge Function 도입 시점에 강화 예정 (CLAUDE.md "보안" 참고).
+-- RLS 강화: 게임 상태(rooms/players/ownerships) 쓰기는 이제 game-action Edge Function
+-- (서비스 롤 키, RLS를 항상 우회함)만 할 수 있게 잠근다. 로비 CRUD(방 생성/참가/나가기/
+-- 준비토글/턴시간설정)는 그대로 anon 키로 직접 처리하므로 그 부분 권한은 열어둔다.
+alter table rooms enable row level security;
+alter table players enable row level security;
+alter table ownerships enable row level security;
+
+-- 읽기는 전부 허용 (로비/게임 화면 렌더링 + Postgres Changes 구독에 필요).
+drop policy if exists rooms_select_anon on rooms;
+create policy rooms_select_anon on rooms for select using (true);
+
+drop policy if exists players_select_anon on players;
+create policy players_select_anon on players for select using (true);
+
+drop policy if exists ownerships_select_anon on ownerships;
+create policy ownerships_select_anon on ownerships for select using (true);
+
+-- 로비 CRUD용 insert/delete/update 정책 (rooms/players만 — ownerships는 정책이 아예
+-- 없어서 anon은 insert/update/delete를 전혀 못 하고, Edge Function(서비스 롤)만 가능).
+drop policy if exists rooms_insert_anon on rooms;
+create policy rooms_insert_anon on rooms for insert with check (true);
+drop policy if exists rooms_delete_anon on rooms;
+create policy rooms_delete_anon on rooms for delete using (true);
+drop policy if exists rooms_update_anon on rooms;
+create policy rooms_update_anon on rooms for update using (true) with check (true);
+
+drop policy if exists players_insert_anon on players;
+create policy players_insert_anon on players for insert with check (true);
+drop policy if exists players_delete_anon on players;
+create policy players_delete_anon on players for delete using (true);
+drop policy if exists players_update_anon on players;
+create policy players_update_anon on players for update using (true) with check (true);
+
+-- 위 update 정책은 "어느 행을 고칠 수 있는지"만 허용하는 것 — 실제로 "어느 컬럼을
+-- 고칠 수 있는지"는 RLS가 아니라 컬럼 단위 GRANT로 잠근다. 게임 상태 컬럼(balance,
+-- position, phase, version 등)은 이제 anon 키로는 아예 못 쓰고 Edge Function만 쓸 수 있다.
+revoke update on rooms from anon;
+grant update (turn_time_sec, host_client_id) on rooms to anon; -- 턴시간설정/방장위임(나가기)만 허용
+
+revoke update on players from anon;
+grant update (is_ready) on players to anon; -- 준비 토글만 허용

@@ -232,6 +232,10 @@
   color: var(--text-muted);
 }
 
+.tile-level {
+  font-size: 9px;
+}
+
 .board-cell-tokens {
   position: absolute;
   top: 4px;
@@ -408,6 +412,16 @@
 
 .turn-panel-players li.active {
   background: color-mix(in srgb, var(--color-blue) 12%, transparent);
+}
+
+.forfeit-button {
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--color-red);
 }
 
 .result-screen button {

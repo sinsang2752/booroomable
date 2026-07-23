@@ -2,7 +2,12 @@ export type PlayerColor = 'blue' | 'red' | 'green' | 'amber';
 
 export type TileType = 'start' | 'jail' | 'empty_land';
 
-export type TurnPhase = 'awaiting-roll' | 'awaiting-purchase-decision' | 'game-over';
+export type TurnPhase =
+  | 'awaiting-roll'
+  | 'awaiting-purchase-decision'
+  | 'awaiting-build-decision'
+  | 'awaiting-initial-build-decision'
+  | 'game-over';
 
 export interface Tile {
   idx: number;
@@ -29,8 +34,11 @@ export interface GameState {
   currentPlayerIndex: number;
   /** length BOARD_SIZE, index-aligned with the board, value = owning player id or null */
   tileOwners: (string | null)[];
+  /** length BOARD_SIZE, index-aligned with the board, 0(맨땅)~MAX_BUILDING_LEVEL */
+  tileLevels: number[];
   lastRoll: [number, number] | null;
   isDoubleRoll: boolean;
+  /** 구매 대기와 건물 업그레이드 대기 둘 다 이 필드를 쓴다 (phase로 구분) */
   pendingPurchaseTileIdx: number | null;
   winnerId: string | null;
   turnNumber: number;
@@ -39,4 +47,6 @@ export interface GameState {
 
 export type GameAction =
   | { type: 'ROLL_DICE' }
-  | { type: 'DECIDE_PURCHASE'; buy: boolean };
+  | { type: 'DECIDE_PURCHASE'; buy: boolean }
+  | { type: 'DECIDE_BUILD'; build: boolean }
+  | { type: 'FORFEIT'; playerId: string };

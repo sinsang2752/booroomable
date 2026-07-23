@@ -29,10 +29,14 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
     loading,
     error,
     isMyTurn,
+    isEliminated,
     isSubmitting,
     turnDeadlineMs,
+    turnTimeSec,
     rollDice,
     decidePurchase,
+    decideBuild,
+    forfeit,
   } = useSyncedGame(roomId);
   const myNickname = dbPlayers.find((p) => p.client_id === clientId)?.nickname ?? '';
   const { messages, sendMessage } = useRoomChat(roomId, clientId, myNickname);
@@ -93,7 +97,12 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
 
   return (
     <div className="game-screen">
-      <Board tileOwners={state.tileOwners} players={state.players} bubbles={bubbles}>
+      <Board
+        tileOwners={state.tileOwners}
+        tileLevels={state.tileLevels}
+        players={state.players}
+        bubbles={bubbles}
+      >
         {state.phase === 'game-over' ? (
           <ResultScreen winnerName={winner?.name ?? null} onRestart={onRestart} />
         ) : (
@@ -101,10 +110,14 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
             <TurnPanel
               state={state}
               isMyTurn={isMyTurn}
+              isEliminated={isEliminated}
               isSubmitting={isSubmitting}
               turnDeadlineMs={turnDeadlineMs}
+              turnTimeSec={turnTimeSec}
               onRoll={rollDice}
               onDecide={decidePurchase}
+              onDecideBuild={decideBuild}
+              onForfeit={forfeit}
             />
             <input
               type="text"
