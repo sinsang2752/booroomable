@@ -30,8 +30,25 @@ create table if not exists players (
   is_bankrupt boolean not null default false,
   seat_order int not null,
   is_connected boolean not null default true,
+  is_ready boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- 기존에 스키마를 먼저 실행한 적이 있어도 안전하게 컬럼만 추가되도록.
+alter table players add column if not exists is_ready boolean not null default false;
+
+-- 동시 참가 시 좌석 번호/같은 사람 중복 참가 방지.
+do $$
+begin
+  alter table players add constraint players_room_seat_unique unique (room_id, seat_order);
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter table players add constraint players_room_client_unique unique (room_id, client_id);
+exception when duplicate_object then null;
+end $$;
 
 -- tiles: 40칸 보드 고정 마스터 데이터 (모든 방이 공유)
 create table if not exists tiles (
