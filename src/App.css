@@ -330,7 +330,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 14cqw;
+  font-size: 16cqw;
   line-height: 1.25;
   text-align: center;
   overflow: hidden;
@@ -372,7 +372,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 25cqw;
+  font-size: 27cqw;
   background: color-mix(in srgb, var(--border) 45%, var(--panel-bg));
   border-bottom: 2px solid var(--border);
   box-sizing: border-box;
@@ -385,6 +385,8 @@
   border-bottom-color: color-mix(in srgb, #b8860b 60%, var(--border));
 }
 
+/* 이름은 위쪽, 국기는 가운데, 가격/통행료는 아래쪽 — space-between이 첫/마지막 요소를
+ * 각각 padding 경계에 붙이고 가운데(국기)는 자연스럽게 중간에 남는다. */
 .tile-body {
   flex: 1;
   min-height: 0;
@@ -394,9 +396,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2.5cqw;
-  padding: 3cqw 1.5cqw;
+  justify-content: space-between;
+  gap: 1.5cqw;
+  padding: 4cqw 1.5cqw;
 }
 
 .tile > .tile-label {
@@ -409,8 +411,8 @@
 }
 
 .tile-flag-box {
-  width: 36cqw;
-  height: 25cqw;
+  width: 40cqw;
+  height: 28cqw;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -421,9 +423,17 @@
   overflow: hidden;
 }
 
+/* 국기는 flag-icons 패키지의 개별 SVG를 인라인 style로 background-image에 바로 넣는다
+ * (Tile.tsx) — 유니코드 국기 이모지는 Windows에서 그림 대신 빈 상자/텍스트로 보이는
+ * 경우가 있어서(플랫폼별 이모지 폰트 차이) 실제 SVG 파일 기반으로 교체함. 패키지의
+ * CSS(fi/fi-{code})를 통째로 import하면 Vite가 약 250개국 SVG를 전부 번들에 넣어버려서
+ * (실제로 겪음) 여기선 실제 쓰는 26개국만 개별 import한다(src/game/flagAssets.ts). */
 .tile-flag {
-  font-size: 18cqw;
-  line-height: 1;
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-position: 50%;
+  background-repeat: no-repeat;
 }
 
 .tile-value {
@@ -431,16 +441,22 @@
   color: var(--text-muted);
 }
 
+/* 타일 정중앙 기준점. 실제 자기중심 정렬(-50%,-50%)은 각 .player-token의 인라인
+ * transform이 담당한다(PlayerToken.tsx) — 혼자면 정확히 중앙, 여럿이면 좌우로 나란히. */
 .board-cell-tokens {
   position: absolute;
-  top: 4px;
+  top: 50%;
   left: 50%;
 }
 
+/* transform이 있는 요소는 새 스태킹 컨텍스트를 만들어서(인라인 transform, PlayerToken.tsx),
+ * 이 z-index가 있어야 말풍선/배지가 "다음 칸" 타일(나중에 그려지는 형제 .board-cell)에
+ * 안 가려진다 — 없으면 채팅 말풍선이 옆 타일 뒤로 숨는 버그가 있었음. */
 .player-token {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 10;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -494,11 +510,14 @@
   left: 50%;
   transform: translateX(-50%);
   background: var(--panel-bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 500;
+  /* border-color: inherit로 부모(.player-token)의 인라인 borderColor(플레이어 자기 색)를
+   * 그대로 물려받는다 — border-color는 원래 상속되는 속성이 아니라 inherit를 명시해야 함. */
+  border: 2px solid;
+  border-color: inherit;
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }

@@ -155,6 +155,7 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
             tileOwners={state.tileOwners}
             tileLevels={state.tileLevels}
             players={state.players}
+            notice={state.notice}
             bubbles={bubbles}
             selectableTiles={selectableTiles}
             onSelectTile={handleSelectTile}

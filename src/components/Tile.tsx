@@ -1,5 +1,6 @@
 import { TILE_FLAGS } from '../game/board';
 import { getCurrentToll } from '../game/buildings';
+import { FLAG_ASSET_URLS } from '../game/flagAssets';
 import type { PlayerColor, Tile as TileData } from '../game/types';
 
 interface TileProps {
@@ -44,7 +45,13 @@ export function Tile({ tile, ownerColor, level = 0, selectable = false, selectHi
             <span className="tile-label">{label}</span>
             {flag && (
               <span className="tile-flag-box">
-                <span className="tile-flag">{flag}</span>
+                <span
+                  className="tile-flag"
+                  // 인라인(개발 모드)으로 번들된 국기는 data:image/svg+xml,...URI라 내부에
+                  // 홑따옴표(')가 그대로 들어있다 — url() 안을 따옴표 없이 쓰면 그 홑따옴표
+                  // 때문에 CSS 파싱이 깨져 아무것도 안 보였다. 쌍따옴표로 감싸서 해결.
+                  style={{ backgroundImage: `url("${FLAG_ASSET_URLS[flag]}")` }}
+                />
               </span>
             )}
             {value !== null && <span className="tile-value">{value}</span>}
