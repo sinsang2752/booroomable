@@ -100,6 +100,9 @@ function handleRollDice(state: GameState): GameState {
         }
         notice = `${currentPlayer.name}님이 ${tile.name} 통행료 ${toll}을 지불했습니다.`;
       }
+    } else if (currentPlayer.balance < (tile.price ?? 0)) {
+      // 살 돈이 없으면 물어볼 필요 없이 그냥 지나감
+      notice = `${currentPlayer.name}님이 ${tile.name}을(를) 살 돈이 없어 지나갑니다.`;
     } else {
       phase = 'awaiting-purchase-decision';
       pendingPurchaseTileIdx = newPos;

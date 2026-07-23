@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { BOARD } from '../game/board';
 import type { GameState } from '../game/types';
 
@@ -5,14 +6,31 @@ interface TurnPanelProps {
   state: GameState;
   isMyTurn: boolean;
   isSubmitting: boolean;
+  turnDeadlineMs: number | null;
   onRoll: () => void;
   onDecide: (buy: boolean) => void;
 }
 
-export function TurnPanel({ state, isMyTurn, isSubmitting, onRoll, onDecide }: TurnPanelProps) {
+export function TurnPanel({
+  state,
+  isMyTurn,
+  isSubmitting,
+  turnDeadlineMs,
+  onRoll,
+  onDecide,
+}: TurnPanelProps) {
   const currentPlayer = state.players[state.currentPlayerIndex];
   const pendingTile =
     state.pendingPurchaseTileIdx !== null ? BOARD[state.pendingPurchaseTileIdx] : null;
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const secondsLeft =
+    turnDeadlineMs !== null ? Math.max(0, Math.ceil((turnDeadlineMs - now) / 1000)) : null;
 
   return (
     <div className="turn-panel">
@@ -21,6 +39,7 @@ export function TurnPanel({ state, isMyTurn, isSubmitting, onRoll, onDecide }: T
           {currentPlayer.name}
         </span>
         <span className="turn-panel-turn-number">턴 {state.turnNumber}</span>
+        {secondsLeft !== null && <span className="turn-panel-countdown">{secondsLeft}초</span>}
       </div>
 
       {state.lastRoll && (

@@ -23,8 +23,17 @@ interface GameScreenProps {
 
 function GameScreen({ roomId, onRestart }: GameScreenProps) {
   const clientId = useMemo(() => getClientId(), []);
-  const { state, dbPlayers, loading, error, isMyTurn, isSubmitting, rollDice, decidePurchase } =
-    useSyncedGame(roomId);
+  const {
+    state,
+    dbPlayers,
+    loading,
+    error,
+    isMyTurn,
+    isSubmitting,
+    turnDeadlineMs,
+    rollDice,
+    decidePurchase,
+  } = useSyncedGame(roomId);
   const myNickname = dbPlayers.find((p) => p.client_id === clientId)?.nickname ?? '';
   const { messages, sendMessage } = useRoomChat(roomId, clientId, myNickname);
 
@@ -93,6 +102,7 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
               state={state}
               isMyTurn={isMyTurn}
               isSubmitting={isSubmitting}
+              turnDeadlineMs={turnDeadlineMs}
               onRoll={rollDice}
               onDecide={decidePurchase}
             />

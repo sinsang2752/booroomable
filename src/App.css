@@ -339,6 +339,12 @@
   font-weight: 400;
 }
 
+.turn-panel-countdown {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
 .turn-panel-dice {
   font-size: 20px;
   margin-bottom: 8px;

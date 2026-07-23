@@ -71,7 +71,7 @@ export async function submitAction(roomId: string, action: GameAction): Promise<
 
   const { data: updatedRooms, error: roomError } = await supabase
     .from('rooms')
-    .update({ ...roomPatch, version: snapshot.room.version + 1 })
+    .update({ ...roomPatch, turn_started_at: new Date().toISOString(), version: snapshot.room.version + 1 })
     .eq('id', roomId)
     .eq('version', snapshot.room.version)
     .select();
@@ -79,4 +79,21 @@ export async function submitAction(roomId: string, action: GameAction): Promise<
   if (!updatedRooms || updatedRooms.length === 0) {
     throw new Error('다른 요청이 먼저 처리되었습니다. 최신 상태를 다시 불러옵니다.');
   }
+}
+
+/**
+ * 턴 타이머가 만료됐을 때, 접속한 여러 클라이언트가 동시에 자동 행동을 시도하지 않도록
+ * version을 조건부로 먼저 한 번 올려서 "이번 타임아웃은 내가 처리한다"를 선점한다.
+ * 1행이 바뀌면 선점 성공 — 그 다음에 submitAction으로 실제 자동 행동을 제출하면 된다.
+ * 0행이면 이미 누군가 처리했거나 상태가 바뀐 것이니 조용히 넘어가면 된다.
+ */
+export async function claimTurnTimeout(roomId: string, expectedVersion: number): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('rooms')
+    .update({ version: expectedVersion + 1 })
+    .eq('id', roomId)
+    .eq('version', expectedVersion)
+    .select();
+  if (error) throw error;
+  return !!data && data.length === 1;
 }
