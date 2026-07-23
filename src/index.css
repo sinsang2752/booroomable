@@ -15,7 +15,6 @@
   font: 16px/145% var(--sans);
   color-scheme: light dark;
   color: var(--text);
-  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -36,22 +35,68 @@
   box-sizing: border-box;
 }
 
+/* Electron 창을 투명(transparent:true)으로 띄우므로, 카드/타일 등 실제 UI 요소가 아닌
+ * 빈 영역은 배경을 안 칠해서 데스크톱이 그대로 비치게 한다(일반 브라우저 탭에서는 흰 배경으로 보임). */
+html,
 body {
   margin: 0;
+  background: transparent;
 }
 
+/* #root 자체를 드래그 영역으로 두고, 실제 화면 카드들(아래)만 no-drag로 뚫어준다.
+ * 그러면 카드 바깥의 빈 여백(투명하게 비치는 부분)을 잡고 창을 옮길 수 있어서,
+ * 화면 위에 별도로 튀어나온 드래그 손잡이가 필요 없다. */
 #root {
+  -webkit-app-region: drag;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  background: transparent;
+}
+
+.nickname-screen,
+.main-screen,
+.lobby-screen,
+.game-screen,
+.loading-screen {
+  -webkit-app-region: no-drag;
 }
 
 button {
   font: inherit;
   cursor: pointer;
+}
+
+/* 프레임 없는 Electron 창의 닫기 버튼 (WindowChrome.tsx). 평소엔 거의 안 보이다가
+ * 우측 상단에 마우스를 올렸을 때만 살짝 드러난다. */
+.app-close-button {
+  -webkit-app-region: no-drag;
+  position: fixed;
+  top: 6px;
+  right: 6px;
+  z-index: 1000;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.15;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.app-close-button:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-red) 25%, transparent);
+  color: var(--color-red);
 }
 
 h1 {
