@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import logo from '../assets/logo.png';
 
 interface MainScreenProps {
   nickname: string;
@@ -38,7 +39,7 @@ export function MainScreen({ nickname, onCreateRoom, onJoinRoom }: MainScreenPro
 
   return (
     <div className="main-screen">
-      <h1>부루마블</h1>
+      <img src={logo} alt="부루마블" className="brand-logo" />
       <p>{nickname}님, 반갑습니다.</p>
 
       <button type="button" className="start-button" onClick={handleCreate} disabled={busy}>

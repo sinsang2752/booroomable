@@ -17,6 +17,8 @@ interface BoardProps {
   /** 출발점 보너스 등에서 "지금 클릭해서 고를 수 있는 칸" 목록 (idx -> 안내문구) */
   selectableTiles?: Map<number, string>;
   onSelectTile?: (idx: number) => void;
+  /** 이 시각까지 말 이동을 미룬다(주사위가 굴러가는 동안). App.tsx에서 계산. */
+  moveHoldUntil?: number;
   children?: React.ReactNode;
 }
 
@@ -28,9 +30,13 @@ export function Board({
   bubbles,
   selectableTiles,
   onSelectTile,
+  moveHoldUntil = 0,
   children,
 }: BoardProps) {
-  const animatedPositions = useAnimatedPositions(players, notice);
+  const animatedPositions = useAnimatedPositions(players, notice, moveHoldUntil);
+
+  // 각 말이 "지금 화면에 보여줄 칸"(애니메이션 중이면 걸어가는 중간 칸).
+  const displayPosOf = (player: Player) => animatedPositions[player.id] ?? player.position;
 
   return (
     <div className="board">
@@ -38,7 +44,6 @@ export function Board({
         const pos = getTilePosition(tile.idx);
         const ownerId = tileOwners[tile.idx];
         const owner = ownerId ? players.find((p) => p.id === ownerId) : undefined;
-        const tokensHere = players.filter((p) => (animatedPositions[p.id] ?? p.position) === tile.idx);
         const selectHint = selectableTiles?.get(tile.idx);
 
         return (
@@ -55,18 +60,28 @@ export function Board({
               selectHint={selectHint}
               onSelect={() => onSelectTile?.(tile.idx)}
             />
-            <div className="board-cell-tokens">
-              {tokensHere.map((player, i) => (
-                <PlayerToken
-                  key={player.id}
-                  player={player}
-                  stackIndex={i}
-                  stackCount={tokensHere.length}
-                  bubbleText={bubbles?.[player.id]}
-                />
-              ))}
-            </div>
           </div>
+        );
+      })}
+
+      {/* 말은 board-cell 밖, board 직속에 절대배치 — 칸이 바뀌어도 DOM 부모가 안 바뀌어서
+       * CSS transition(App.css .player-token)으로 칸 사이를 부드럽게 슬라이드한다. */}
+      {players.map((player) => {
+        const displayPos = displayPosOf(player);
+        const pos = getTilePosition(displayPos);
+        // 같은 칸에 있는 말들끼리 좌우로 나란히 펼치기 위한 순번/개수.
+        const sameCell = players.filter((p) => displayPosOf(p) === displayPos);
+        const stackIndex = sameCell.findIndex((p) => p.id === player.id);
+        return (
+          <PlayerToken
+            key={player.id}
+            player={player}
+            xPct={pos.xPct}
+            yPct={pos.yPct}
+            stackIndex={stackIndex}
+            stackCount={sameCell.length}
+            bubbleText={bubbles?.[player.id]}
+          />
         );
       })}
 

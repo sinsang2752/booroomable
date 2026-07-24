@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { BOARD } from '../game/board';
 import { getCumulativeUpgradeCost, getMaxAffordableLevel, getUpgradeCost } from '../game/buildings';
 import { BUILDING_LEVEL_NAMES } from '../game/config';
-import type { GameState } from '../game/types';
+import type { GameState, Player } from '../game/types';
 
 interface TurnPanelProps {
   state: GameState;
+  /** 우측 자산 패널에 표시할 "나" 자신의 player. 관전 등으로 없으면 null. */
+  myPlayer: Player | null;
   isMyTurn: boolean;
   isEliminated: boolean;
   isSubmitting: boolean;
@@ -37,6 +39,7 @@ function classifyNotice(notice: string): NoticeTone {
 
 export function TurnPanel({
   state,
+  myPlayer,
   isMyTurn,
   isEliminated,
   isSubmitting,
@@ -49,6 +52,8 @@ export function TurnPanel({
   onForfeit,
 }: TurnPanelProps) {
   const currentPlayer = state.players[state.currentPlayerIndex];
+  // 자산 패널은 내 자산을 보여준다(현재 턴 플레이어가 아님). 내 player가 없으면 fallback.
+  const assetPlayer = myPlayer ?? currentPlayer;
   const pendingIdx = state.pendingPurchaseTileIdx;
   const pendingTile = pendingIdx !== null ? BOARD[pendingIdx] : null;
   const pendingTileLevel = pendingIdx !== null ? state.tileLevels[pendingIdx] : 0;
@@ -66,23 +71,24 @@ export function TurnPanel({
         })()
       : [];
 
-  // 자산 증감(+/-) 표시: 같은 턴 안에서 현재 턴 플레이어의 잔액이 바뀔 때만 짧게 보여준다.
+  // 자산 증감(+/-) 표시: 내 잔액이 바뀔 때 짧게 보여준다(어느 턴이든 통행료 등으로 내 돈이
+  // 오갈 수 있으므로 턴 경계가 아니라 잔액 변화 자체를 추적한다).
   const [delta, setDelta] = useState<number | null>(null);
-  const baselineRef = useRef<{ turnNumber: number; playerId: string; balance: number } | null>(null);
+  const baselineRef = useRef<{ playerId: string; balance: number } | null>(null);
   useEffect(() => {
     const baseline = baselineRef.current;
-    if (!baseline || baseline.turnNumber !== state.turnNumber || baseline.playerId !== currentPlayer.id) {
-      baselineRef.current = { turnNumber: state.turnNumber, playerId: currentPlayer.id, balance: currentPlayer.balance };
+    if (!baseline || baseline.playerId !== assetPlayer.id) {
+      baselineRef.current = { playerId: assetPlayer.id, balance: assetPlayer.balance };
       setDelta(null);
       return;
     }
-    if (baseline.balance === currentPlayer.balance) return;
-    const diff = currentPlayer.balance - baseline.balance;
-    baselineRef.current = { ...baseline, balance: currentPlayer.balance };
+    if (baseline.balance === assetPlayer.balance) return;
+    const diff = assetPlayer.balance - baseline.balance;
+    baselineRef.current = { ...baseline, balance: assetPlayer.balance };
     setDelta(diff);
     const timer = setTimeout(() => setDelta(null), 1800);
     return () => clearTimeout(timer);
-  }, [state.turnNumber, currentPlayer.id, currentPlayer.balance]);
+  }, [assetPlayer.id, assetPlayer.balance]);
 
   function handleForfeitClick() {
     if (window.confirm('정말 게임을 포기하시겠습니까? 포기하면 다시 참여할 수 없습니다.')) {
@@ -99,9 +105,9 @@ export function TurnPanel({
           💰
         </div>
         <div className="asset-info">
-          <span className="asset-label">{currentPlayer.name}님 자산</span>
+          <span className="asset-label">{assetPlayer.name}님 자산</span>
           <span className="asset-balance">
-            {currentPlayer.balance.toLocaleString()}
+            {assetPlayer.balance.toLocaleString()}
             {delta !== null && (
               <span className={`asset-delta ${delta >= 0 ? 'asset-delta--up' : 'asset-delta--down'}`}>
                 {delta >= 0 ? '+' : ''}

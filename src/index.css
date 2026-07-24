@@ -48,6 +48,11 @@
   --color-green: #22c55e;
   --color-amber: #f59e0b;
 
+  /* Figma 초안 반영: 브랜드 블루 그라데이션(주요 버튼)과 라벤더톤 보조 표면
+   * (입력창/보조 버튼/채팅창 배경 등, 카드 자체의 --panel-bg와 구분되는 한 단계 옅은 톤). */
+  --gradient-primary: linear-gradient(180deg, #5b8def, #2f5fd8);
+  --surface-soft: #eef0f8;
+
   --sans: 'Noto Sans KR', system-ui, 'Segoe UI', Roboto, sans-serif;
   /* 강조용 픽셀 서체 — 타일 이름/현재 턴/구매·건축 버튼/황금열쇠 메시지/결과 제목에만 적용(App.css). */
   --font-emphasis: 'Galmuri11', 'Noto Sans KR', system-ui, sans-serif;
@@ -77,6 +82,7 @@
     --bg: #17161c;
     --panel-bg: #232129;
     --border: #38343f;
+    --surface-soft: #2c2a3a;
   }
 }
 
@@ -95,7 +101,8 @@ body {
 /* #root 자체를 드래그 영역으로 두고, 실제 화면 카드들(아래)만 no-drag로 뚫어준다.
  * 카드가 창을 거의 꽉 채우기 때문에(App.css), 좌/우/하단 여백은 최소한으로 줄이고
  * 상단에만 드래그하기 충분한 여백을 둬서 "창 위쪽을 잡고 옮기는" 손잡이 역할을 하게 한다
- * (닫기 버튼도 이 상단 여백 안, 우측에 놓인다 — WindowChrome.tsx/.app-close-button). */
+ * (닫기 버튼도 이 상단 여백 안, 우측에 놓인다 — WindowChrome.tsx/.app-close-button). 상단
+ * 여백이 너무 크게 비어 보인다는 피드백으로 기존 28px의 절반인 14px로 줄임. */
 /* 창이 화면 우측 하단에 고정되어 있으므로, 화면 카드는 항상 우측 하단 모서리에
  * 붙이고(align-items/justify-content: flex-end) 크기가 바뀌면 좌측·상단으로만
  * 늘어나거나 줄어들게 한다. */
@@ -106,7 +113,7 @@ body {
   flex-direction: column;
   align-items: flex-end;
   justify-content: flex-end;
-  padding: 28px 6px 6px;
+  padding: 14px 6px 6px;
   background: transparent;
 }
 
@@ -128,7 +135,7 @@ button {
 .app-close-button {
   -webkit-app-region: no-drag;
   position: fixed;
-  top: 5px;
+  top: 9px;
   right: 6px;
   z-index: 1000;
   width: 18px;

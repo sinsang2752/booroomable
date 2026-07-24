@@ -1,4 +1,4 @@
-import { TILE_FLAGS } from '../game/board';
+import { TILE_FLAGS, TILE_GROUP_COLOR } from '../game/board';
 import { getCurrentToll } from '../game/buildings';
 import { FLAG_ASSET_URLS } from '../game/flagAssets';
 import type { PlayerColor, Tile as TileData } from '../game/types';
@@ -13,8 +13,7 @@ interface TileProps {
   onSelect?: () => void;
 }
 
-/** 레벨별 상단 건물 아이콘 — 실제 픽셀아트 에셋 준비 전까지의 자리표시자(placeholder).
- * 나중에 이 자리를 이미지 스프라이트로 교체하면 됨(레이아웃 구조는 이미 완성). */
+/** 레벨별 상단 건물 아이콘(이모지). level 1·2=별장(같은 이모지), 3=빌딩, 4=호텔. */
 function buildingIcon(level: number): string | null {
   if (level >= 4) return '🏨';
   if (level === 3) return '🏢';
@@ -40,7 +39,13 @@ export function Tile({ tile, ownerColor, level = 0, selectable = false, selectHi
     >
       {isLand ? (
         <>
-          <div className="tile-top">{buildingIcon(level)}</div>
+          <div
+            className="tile-top"
+            // empty_land만 파스텔 그룹색(랜드마크는 .tile--landmark .tile-top 금색 유지, 특수칸은 tile-top 없음).
+            style={tile.type === 'empty_land' ? { background: TILE_GROUP_COLOR[tile.idx] } : undefined}
+          >
+            {buildingIcon(level)}
+          </div>
           <div className="tile-body">
             <span className="tile-label">{label}</span>
             {flag && (

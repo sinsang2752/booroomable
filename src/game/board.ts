@@ -68,9 +68,20 @@ const LAND_DEFS: LandDef[] = [
  * 존재, 나머지 특수칸은 조회되지 않음. Tile.tsx 전용. */
 export const TILE_FLAGS: Record<number, string> = {};
 
+/* 건물칸(.tile-top) 배경을 화사하게 하기 위한 파스텔 팔레트. 땅 칸을 인덱스 순으로 훑으며
+ * 4칸마다 다음 색으로 넘겨(GROUP_SIZE) "같은 색이 3~4칸씩" 묶이게 한다. 랜드마크는 제외
+ * (금색 유지, App.css). panel-bg와 섞어 은은하게 쓰고 다크모드에도 자동 적응한다. */
+const GROUP_PALETTE = ['#f5a3b8', '#f6bf8a', '#f2df8e', '#a9dca0', '#98cdf0', '#c3aeeb'];
+const GROUP_SIZE = 4;
+
+/** idx -> 건물칸 배경색(CSS color-mix 문자열). empty_land 칸만 존재. Tile.tsx 전용. */
+export const TILE_GROUP_COLOR: Record<number, string> = {};
+
 function buildBoard(): Tile[] {
   const tiles: Tile[] = [];
   let lane = 0;
+  // 파스텔 색 그룹용 카운터 — empty_land(랜드마크 제외)만 셈해서 4칸마다 색을 바꾼다.
+  let landColorCount = 0;
 
   for (let idx = 0; idx < BOARD_SIZE; idx += 1) {
     if (idx === START_TILE_IDX) {
@@ -108,6 +119,11 @@ function buildBoard(): Tile[] {
       toll,
     });
     TILE_FLAGS[idx] = def.flag;
+    if (!def.landmark) {
+      const hex = GROUP_PALETTE[Math.floor(landColorCount / GROUP_SIZE) % GROUP_PALETTE.length];
+      TILE_GROUP_COLOR[idx] = `color-mix(in srgb, ${hex} 55%, var(--panel-bg))`;
+      landColorCount += 1;
+    }
     lane += 1;
   }
 

@@ -2,6 +2,9 @@ import type { Player } from '../game/types';
 
 interface PlayerTokenProps {
   player: Player;
+  /** board 컨테이너 기준 말 위치(퍼센트). 칸이 바뀌면 CSS transition으로 슬라이드된다. */
+  xPct: number;
+  yPct: number;
   /** 같은 칸에 여러 말이 있을 때 겹치지 않도록 하는 순번/전체 개수 */
   stackIndex: number;
   stackCount: number;
@@ -9,7 +12,7 @@ interface PlayerTokenProps {
   bubbleText?: string;
 }
 
-export function PlayerToken({ player, stackIndex, stackCount, bubbleText }: PlayerTokenProps) {
+export function PlayerToken({ player, xPct, yPct, stackIndex, stackCount, bubbleText }: PlayerTokenProps) {
   const spread = 22;
   // 혼자면 offset=0 -> translate(-50%,-50%)만 남아 타일 정중앙에 정확히 놓인다.
   // 여럿이면 가로로만(세로는 항상 중앙) 나란히 펼쳐서 서로 겹치지 않게 한다.
@@ -19,6 +22,8 @@ export function PlayerToken({ player, stackIndex, stackCount, bubbleText }: Play
     <div
       className={`player-token${player.isBankrupt ? ' player-token--bankrupt' : ''}`}
       style={{
+        left: `${xPct}%`,
+        top: `${yPct}%`,
         borderColor: `var(--color-${player.color})`,
         transform: `translate(calc(-50% + ${offsetX}px), -50%)`,
       }}

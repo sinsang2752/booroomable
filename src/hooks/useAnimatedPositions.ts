@@ -25,8 +25,17 @@ function resolveStepMode(notice: string | null): 'skip' | 'backward' | 'forward'
  * StrictMode가 effect를 두 번 실행해도(mount→cleanup→mount) "이미 타이머가 있는지" 확인과
  * "타이머 등록"이 setState 콜백을 거치지 않고 같은 동기 실행 안에서 끝나서, 같은 말에
  * 인터벌이 두 개 생겨 두 배 속도로 움직이는 버그를 피한다. */
-export function useAnimatedPositions(players: Player[], notice: string | null): Record<string, number> {
+export function useAnimatedPositions(
+  players: Player[],
+  notice: string | null,
+  /** 이 시각(Date.now 기준 ms)까지는 걷기 시작을 미룬다 — 주사위가 굴러가는 동안엔 말이
+   * 안 움직이고 주사위가 멈춘 뒤 걷게 하기 위함(App.tsx). 0이면 지연 없음. */
+  moveHoldUntil = 0,
+): Record<string, number> {
   const [, setTick] = useState(0);
+  // 홀드(주사위 대기)가 끝나는 시점에 이 값을 바꿔 아래 걷기 effect를 다시 돌린다 — setTick은
+  // 리렌더만 유발할 뿐 effect 의존성이 아니라 걷기 로직을 재실행시키지 못하기 때문.
+  const [holdRelease, setHoldRelease] = useState(0);
   const displayRef = useRef<Record<string, number>>({});
   const timersRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const targetsRef = useRef<Record<string, number>>({});
@@ -42,6 +51,14 @@ export function useAnimatedPositions(players: Player[], notice: string | null): 
   }
 
   useEffect(() => {
+    const wait = moveHoldUntil - Date.now();
+    // 아직 주사위가 구르는 중이면(홀드 시각 이전) 걷기 시작을 미루고, 홀드가 끝나는 시점에
+    // holdRelease를 갱신해 이 effect를 다시 돌려 그때 걷기 시작한다.
+    if (wait > 0) {
+      const t = setTimeout(() => setHoldRelease(Date.now()), wait + 10);
+      return () => clearTimeout(t);
+    }
+
     for (const player of players) {
       const id = player.id;
       if (timersRef.current[id]) continue; // 이미 걷고 있으면 그대로 둔다
@@ -70,7 +87,7 @@ export function useAnimatedPositions(players: Player[], notice: string | null): 
         setTick((t) => t + 1);
       }, STEP_MS);
     }
-  }, [players, notice]);
+  }, [players, notice, moveHoldUntil, holdRelease]);
 
   useEffect(
     () => () => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import logo from '../assets/logo.png';
 
 interface NicknameScreenProps {
   onSubmit: (nickname: string) => void;
@@ -15,7 +16,7 @@ export function NicknameScreen({ onSubmit }: NicknameScreenProps) {
 
   return (
     <div className="nickname-screen">
-      <h1>부루마블</h1>
+      <img src={logo} alt="부루마블" className="brand-logo" />
       <p>사용하실 닉네임을 입력해주세요.</p>
       <input
         type="text"

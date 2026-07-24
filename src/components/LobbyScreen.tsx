@@ -52,29 +52,31 @@ export function LobbyScreen({
         </button>
       </div>
 
-      <button type="button" className="leave-button" onClick={onLeaveRoom}>
-        로비 나가기
-      </button>
+      <div className="lobby-top-row">
+        <button type="button" className="leave-button" onClick={onLeaveRoom}>
+          로비 나가기
+        </button>
 
-      {isHost && (
-        <label className="turn-time-row">
-          턴 제한시간
-          <select
-            value={room.turn_time_sec}
-            onChange={(e) => onSetTurnTime(Number(e.target.value))}
-          >
-            {[20, 30, 40, 50, 60].map((sec) => (
-              <option key={sec} value={sec}>
-                {sec}초
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+        {isHost && (
+          <label className="turn-time-row">
+            턴 제한시간
+            <select
+              value={room.turn_time_sec}
+              onChange={(e) => onSetTurnTime(Number(e.target.value))}
+            >
+              {[20, 30, 40, 50, 60].map((sec) => (
+                <option key={sec} value={sec}>
+                  {sec}초
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
       <ul className="lobby-players">
         {players.map((p) => (
-          <li key={p.id} style={{ borderColor: `var(--color-${p.color})` }}>
+          <li key={p.id} style={{ borderLeftColor: `var(--color-${p.color})` }}>
             <span>{p.nickname}</span>
             {p.client_id === room.host_client_id ? (
               <span className="host-badge">방장</span>
@@ -88,7 +90,7 @@ export function LobbyScreen({
       </ul>
 
       {myPlayer && !isHost && (
-        <button type="button" onClick={onToggleReady}>
+        <button type="button" className="ready-toggle-button" onClick={onToggleReady}>
           {myPlayer.is_ready ? '준비 취소' : '준비 완료'}
         </button>
       )}

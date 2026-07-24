@@ -22,14 +22,14 @@
 /* 닉네임/메인/로비는 #root에 바로 붙는 최상위 화면이라, 셋 다 같은 크기를 쓰게 고정한다.
  * 폭은 420px 고정이고 높이는 창을 꽉 채우는 svh 기반이라, 화면을 오가도 카드 크기가
  * 흔들리지 않고 창 높이(=디스플레이 1/3, electron/main.cjs)가 바뀌면 그대로 같이 커지고
- * 작아진다. 34px는 #root의 상하 padding 합(index.css: 상단 28px 드래그 여백 + 하단 6px).
+ * 작아진다. 20px는 #root의 상하 padding 합(index.css: 상단 14px 드래그 여백 + 하단 6px).
  * 콘텐츠가 넘치는 경우(작은 디스플레이, 로비 인원 많음 등)를 대비해 overflow-y로
  * 스크롤을 허용한다. */
 .nickname-screen,
 .main-screen,
 .lobby-screen {
   width: 420px;
-  height: calc(100svh - 34px);
+  height: calc(100svh - 20px);
   box-sizing: border-box;
   overflow-y: auto;
   display: flex;
@@ -44,18 +44,21 @@
   gap: calc(var(--fluid-unit) * 1.6);
 }
 
-.nickname-screen h1,
-.main-screen h1,
 .lobby-screen h1 {
   font-size: calc(var(--fluid-unit) * 2.4);
-  margin: 0;
+  margin: 0 0 16px;
 }
 
-/* 닉네임/메인 화면은 부모(.nickname-screen, .main-screen)에 gap이 있어 h1 아래 간격이
- * 자동으로 생기지만, .lobby-screen은 자식 요소마다 개별 margin-bottom으로 간격을 주는
- * 방식이라(room-code-row 등) h1만 margin:0이면 바로 아래 방 코드와 붙어 겹쳐 보인다. */
-.lobby-screen h1 {
-  margin-bottom: 16px;
+/* 닉네임/메인 화면 상단 브랜드 로고(부루마블 워드마크, src/assets/logo.png, 원본 1411x786).
+ * 고정 px가 아니라 --fluid-unit(창 높이=디스플레이 1/3에 비례) 기준으로 높이를 잡고,
+ * aspect-ratio로 폭은 자동 계산해서 사용자 화면이 바뀌면 로고도 같이 커지고 작아진다. */
+.brand-logo {
+  display: block;
+  margin: 0 auto;
+  height: calc(var(--fluid-unit) * 9);
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 1411 / 786;
 }
 
 .nickname-screen p,
@@ -68,10 +71,20 @@
 .nickname-screen input,
 .join-row input {
   padding: calc(var(--fluid-unit) * 0.8) calc(var(--fluid-unit) * 0.9);
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: var(--surface-soft);
   font: inherit;
   font-size: calc(var(--fluid-unit) * 1.05);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nickname-screen input:focus,
+.join-row input:focus {
+  outline: none;
+  border-color: var(--color-blue);
+  background: var(--panel-bg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blue) 18%, transparent);
 }
 
 .nickname-screen input {
@@ -83,18 +96,42 @@
 
 .start-button {
   padding: calc(var(--fluid-unit) * 0.9) calc(var(--fluid-unit) * 2);
-  border-radius: 8px;
+  border-radius: 14px;
   border: none;
-  background: var(--color-green);
+  background: var(--gradient-primary);
   color: white;
   font-weight: 600;
   font-size: calc(var(--fluid-unit) * 1.05);
   margin-bottom: 12px;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-blue) 35%, transparent);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+}
+
+.start-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-blue) 45%, transparent);
+}
+
+.start-button:disabled {
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: default;
 }
 
 .nickname-screen .start-button,
 .main-screen .start-button {
   margin-bottom: 0;
+}
+
+.ready-toggle-button {
+  background: var(--surface-soft);
+  color: var(--color-blue);
+  border: 1px solid color-mix(in srgb, var(--color-blue) 35%, transparent);
+  border-radius: 12px;
+  padding: calc(var(--fluid-unit) * 0.6) calc(var(--fluid-unit) * 1.4);
+  font-weight: 600;
+  margin-bottom: 12px;
 }
 
 .join-row {
@@ -106,6 +143,20 @@
 .join-row input {
   flex: 1;
   min-width: 0;
+}
+
+.join-row button {
+  background: var(--color-blue);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0 calc(var(--fluid-unit) * 1);
+  font-weight: 600;
+}
+
+.join-row button:disabled {
+  background: var(--surface-soft);
+  color: var(--text-muted);
 }
 
 .error-text {
@@ -122,28 +173,43 @@
   margin-bottom: 16px;
 }
 
+.room-code-row button {
+  background: var(--surface-soft);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* 로비 나가기 + 턴 제한시간을 한 줄에 배치하는 wrapper — LobbyScreen.tsx 참고. */
+.lobby-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
 .leave-button {
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 14px;
+  border: none;
+  padding: 0;
   font-size: calc(var(--fluid-unit) * 1);
-  color: var(--text-muted);
-  margin-bottom: 16px;
+  color: var(--color-red);
+  font-weight: 600;
 }
 
 .room-code {
   font-size: calc(var(--fluid-unit) * 2);
   font-weight: 700;
   letter-spacing: 4px;
+  color: var(--color-blue);
 }
 
 .turn-time-row {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  margin-bottom: 16px;
   font-size: calc(var(--fluid-unit) * 1.08);
   color: var(--text-muted);
 }
@@ -162,14 +228,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
   padding: 6px 12px;
+  background: var(--panel-bg);
+  /* 플레이어 색은 border-left-color만 인라인으로 덮어쓴다(LobbyScreen.tsx) — 좌측 컬러 바. */
 }
 
 .host-badge {
   font-size: calc(var(--fluid-unit) * 0.92);
-  color: var(--text-muted);
+  color: var(--color-blue);
+  background: color-mix(in srgb, var(--color-blue) 15%, transparent);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 600;
 }
 
 .ready-badge {
@@ -196,6 +269,9 @@
 
 .chat-panel {
   text-align: left;
+  background: var(--surface-soft);
+  border-radius: 12px;
+  padding: 10px;
 }
 
 .chat-messages {
@@ -228,9 +304,31 @@
   flex: 1;
   min-width: 0;
   padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--panel-bg);
   font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chat-input-row input:focus {
+  outline: none;
+  border-color: var(--color-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blue) 18%, transparent);
+}
+
+.chat-input-row button {
+  background: var(--color-blue);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-weight: 600;
+}
+
+.chat-input-row button:disabled {
+  background: var(--border);
+  color: var(--text-muted);
 }
 
 /* 게임 화면: 왼쪽 플레이 영역 + 오른쪽 턴 패널 2열 레이아웃 (GAME_UI_REDESIGN.md) */
@@ -249,9 +347,9 @@
    * 자체를 화면 폭만큼 쓰도록 바꿨다(electron/main.cjs) — 그래서 여기도 폭 상한을 두지
    * 않고 창을 그대로 채운다(예전 min(1400px,98vw)는 창 폭이 1360px 고정이던 시절 값). */
   width: 100%;
-  /* 닉네임/메인/로비 화면과 같은 공식(#root 상하 padding 34px 제외한 순수 창 높이) —
+  /* 닉네임/메인/로비 화면과 같은 공식(#root 상하 padding 20px 제외한 순수 창 높이) —
    * 창 높이(=디스플레이 1/3, electron/main.cjs)가 달라져도 게임판이 같이 늘고 줄게 한다. */
-  height: calc(100svh - 34px);
+  height: calc(100svh - 20px);
   box-sizing: border-box;
 }
 
@@ -364,15 +462,16 @@
   50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-amber) 90%, transparent); }
 }
 
-/* 상단칸: 지금은 건물 아이콘(이모지) 자리표시자. 나중에 픽셀아트 건물 스프라이트로 교체 예정
- * (Tile.tsx의 buildingIcon() 참고) — 레이아웃 구조는 이미 완성돼 있어 이미지만 갈아끼우면 됨. */
+/* 상단칸: 건물 아이콘(이모지) 자리. 소유+건물이 있으면 레벨별 이모지, 없으면 빈 회색 칸.
+ * 이모지 크기(font-size)는 cqw라 타일 크기에 비례해 자동 리사이징된다(Tile.tsx buildingIcon). */
 .tile-top {
   width: 100%;
-  flex: 0 0 27%;
+  flex: 0 0 30%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 27cqw;
+  font-size: 34cqw;
+  line-height: 1;
   background: color-mix(in srgb, var(--border) 45%, var(--panel-bg));
   border-bottom: 2px solid var(--border);
   box-sizing: border-box;
@@ -441,21 +540,12 @@
   color: var(--text-muted);
 }
 
-/* 타일 정중앙 기준점. 실제 자기중심 정렬(-50%,-50%)은 각 .player-token의 인라인
- * transform이 담당한다(PlayerToken.tsx) — 혼자면 정확히 중앙, 여럿이면 좌우로 나란히. */
-.board-cell-tokens {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-}
-
-/* transform이 있는 요소는 새 스태킹 컨텍스트를 만들어서(인라인 transform, PlayerToken.tsx),
- * 이 z-index가 있어야 말풍선/배지가 "다음 칸" 타일(나중에 그려지는 형제 .board-cell)에
- * 안 가려진다 — 없으면 채팅 말풍선이 옆 타일 뒤로 숨는 버그가 있었음. */
+/* 말은 board 직속에 절대배치된다(Board.tsx). left/top(%)은 인라인으로 오고, 위치가 바뀌면
+ * transition으로 칸 사이를 부드럽게 슬라이드한다 — useAnimatedPositions의 STEP_MS(150ms)와
+ * 맞춰야 한 칸 걷는 시간과 슬라이드가 딱 맞아떨어진다. board-cell(타일)들보다 뒤 DOM이라
+ * z-index 없이도 항상 타일 위에 그려져, 말풍선/배지가 옆 타일에 안 가려진다. */
 .player-token {
   position: absolute;
-  top: 0;
-  left: 0;
   z-index: 10;
   width: 26px;
   height: 26px;
@@ -468,6 +558,7 @@
   justify-content: center;
   font-size: 11px;
   font-weight: 700;
+  transition: left 150ms linear, top 150ms linear;
 }
 
 .player-token--bankrupt {
@@ -581,22 +672,54 @@
   background: var(--text);
 }
 
+/* 던져지는 연출: 아래에서 위로 튀어올라 회전하며 착지 후 살짝 튕긴다. 두 주사위에 서로 다른
+ * 회전/타이밍을 줘서 한 몸처럼 똑같이 안 움직이게 한다(second-die는 딜레이+역회전). */
 .dice-pair--rolling .die-face {
-  animation: dice-roll 0.8s ease-in-out;
+  animation: dice-throw 0.85s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
-@keyframes dice-roll {
+.dice-pair--rolling .die-face:last-child {
+  animation-name: dice-throw-alt;
+  animation-delay: 0.06s;
+}
+
+@keyframes dice-throw {
   0% {
-    transform: rotate(0deg) scale(1);
+    transform: translateY(26px) scale(0.55) rotate(0deg);
+    opacity: 0.6;
   }
-  30% {
-    transform: rotate(120deg) scale(1.08);
+  35% {
+    transform: translateY(-22px) scale(1.2) rotate(340deg);
+    opacity: 1;
   }
-  60% {
-    transform: rotate(240deg) scale(0.95);
+  65% {
+    transform: translateY(0) scale(0.95) rotate(560deg);
+  }
+  82% {
+    transform: translateY(-7px) scale(1.03) rotate(650deg);
   }
   100% {
-    transform: rotate(360deg) scale(1);
+    transform: translateY(0) scale(1) rotate(720deg);
+  }
+}
+
+@keyframes dice-throw-alt {
+  0% {
+    transform: translateY(26px) scale(0.55) rotate(0deg);
+    opacity: 0.6;
+  }
+  35% {
+    transform: translateY(-16px) scale(1.18) rotate(-300deg);
+    opacity: 1;
+  }
+  65% {
+    transform: translateY(0) scale(0.96) rotate(-520deg);
+  }
+  82% {
+    transform: translateY(-5px) scale(1.02) rotate(-600deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(-720deg);
   }
 }
 

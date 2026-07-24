@@ -10,7 +10,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "electron:dev": "concurrently -k -n VITE,ELECTRON \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "npm run build && electron-builder --win zip --x64"
+    "electron:build": "npm run build && electron-builder --win zip portable --x64"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",
@@ -46,6 +46,12 @@
       "target": [
         {
           "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
           "arch": [
             "x64"
           ]
