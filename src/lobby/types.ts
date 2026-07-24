@@ -23,6 +23,7 @@ export interface RoomRow {
   event_deck: number[] | null;
   welfare_pool: number;
   consecutive_doubles: number;
+  roll_seq: number;
   winner_player_id: string | null;
   notice: string | null;
   version: number;

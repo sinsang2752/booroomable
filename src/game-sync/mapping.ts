@@ -43,6 +43,7 @@ export function dbToGameState(
     eventDeck: room.event_deck ?? [],
     welfarePool: room.welfare_pool,
     consecutiveDoubles: room.consecutive_doubles,
+    rollSeq: room.roll_seq ?? 0,
     winnerId: room.winner_player_id,
     turnNumber: room.turn_number,
     notice: room.notice,
@@ -61,6 +62,7 @@ export interface RoomPatch {
   event_deck: number[];
   welfare_pool: number;
   consecutive_doubles: number;
+  roll_seq: number;
   winner_player_id: string | null;
   notice: string | null;
 }
@@ -102,6 +104,7 @@ export function computePatches(oldState: GameState, newState: GameState): GameSt
     event_deck: newState.eventDeck,
     welfare_pool: newState.welfarePool,
     consecutive_doubles: newState.consecutiveDoubles,
+    roll_seq: newState.rollSeq,
     winner_player_id: newState.winnerId,
     notice: newState.notice,
   };

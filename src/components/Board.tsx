@@ -17,8 +17,9 @@ interface BoardProps {
   /** 출발점 보너스 등에서 "지금 클릭해서 고를 수 있는 칸" 목록 (idx -> 안내문구) */
   selectableTiles?: Map<number, string>;
   onSelectTile?: (idx: number) => void;
-  /** 이 시각까지 말 이동을 미룬다(주사위가 굴러가는 동안). App.tsx에서 계산. */
-  moveHoldUntil?: number;
+  /** 새 주사위 굴림 식별자(lastRoll 기반, App.tsx가 계산). 바뀌면 주사위 애니메이션이 끝날
+   * 때까지 말 이동을 미룬다(useAnimatedPositions). */
+  rollKey?: string | null;
   children?: React.ReactNode;
 }
 
@@ -30,10 +31,10 @@ export function Board({
   bubbles,
   selectableTiles,
   onSelectTile,
-  moveHoldUntil = 0,
+  rollKey = null,
   children,
 }: BoardProps) {
-  const animatedPositions = useAnimatedPositions(players, notice, moveHoldUntil);
+  const animatedPositions = useAnimatedPositions(players, notice, rollKey);
 
   // 각 말이 "지금 화면에 보여줄 칸"(애니메이션 중이면 걸어가는 중간 칸).
   const displayPosOf = (player: Player) => animatedPositions[player.id] ?? player.position;

@@ -57,6 +57,10 @@ export interface GameState {
   welfarePool: number;
   /** 현재 플레이어가 이번 턴 체인에서 연속으로 굴린 더블 횟수. 턴이 다음 사람에게 넘어가면 0으로 리셋. */
   consecutiveDoubles: number;
+  /** 주사위를 실제로 굴릴 때만 +1 되는 단조 증가 카운터. 클라이언트가 "새 굴림"을 정확히
+   * 식별해 이동 애니메이션 지연을 트리거하는 데 쓴다 — lastRoll 눈만으로는 직전과 눈이
+   * 같으면(1/36) 구분이 안 되던 문제를 없애기 위함(App.tsx rollKey / useAnimatedPositions). */
+  rollSeq: number;
   winnerId: string | null;
   turnNumber: number;
   notice: string | null;

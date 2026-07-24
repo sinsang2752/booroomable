@@ -160,6 +160,7 @@ async function handleStartGame(supabase: SupabaseClient, roomId: string, clientI
       event_deck: [],
       welfare_pool: 0,
       consecutive_doubles: 0,
+      roll_seq: 0,
       winner_player_id: null,
       notice: null,
       version: 0,

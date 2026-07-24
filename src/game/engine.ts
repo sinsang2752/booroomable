@@ -65,6 +65,7 @@ export function createInitialState(names: string[]): GameState {
     eventDeck: [],
     welfarePool: 0,
     consecutiveDoubles: 0,
+    rollSeq: 0,
     winnerId: null,
     turnNumber: 1,
     notice: null,
@@ -73,8 +74,13 @@ export function createInitialState(names: string[]): GameState {
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
-    case 'ROLL_DICE':
-      return handleRollDice(state);
+    case 'ROLL_DICE': {
+      // 실제로 굴림이 일어난 경우에만(잘못된 phase면 handleRollDice가 state를 그대로 반환)
+      // rollSeq를 +1 해서 "새 굴림"임을 클라이언트가 정확히 식별하게 한다. 여러 갈래(무인도/
+      // 연속더블/일반)가 있어도 여기 한 곳에서 올려 모든 경로를 커버한다.
+      const next = handleRollDice(state);
+      return next === state ? state : { ...next, rollSeq: state.rollSeq + 1 };
+    }
     case 'DECIDE_PURCHASE':
       return handleDecidePurchase(state, action.buy);
     case 'DECIDE_BUILD':

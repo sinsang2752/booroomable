@@ -226,6 +226,11 @@ alter table players add column if not exists jail_turns_left int not null defaul
 -- 3단계 더블 3연속 판정용. 턴이 실제로 다음 사람에게 넘어갈 때마다 0으로 리셋.
 alter table rooms add column if not exists consecutive_doubles int not null default 0;
 
+-- 주사위를 실제로 굴릴 때만 +1 되는 카운터. 클라이언트가 "새 굴림"을 정확히 식별해 말 이동
+-- 애니메이션을 주사위가 멈춘 뒤로 미루는 데 쓴다(lastRoll 눈만으로는 직전과 눈이 같으면 구분
+-- 불가). 위 컬럼들과 동일하게 anon은 못 쓰고 Edge Function만 갱신(별도 GRANT 불필요).
+alter table rooms add column if not exists roll_seq int not null default 0;
+
 -- 3단계 원작 재분석: 땅 이름을 실제 지역명으로 교체(CLAUDE.md "보드 칸 구성" 표 그대로).
 -- 가격/타입/인덱스는 이번 단계에서 안 건드림 — name 컬럼만 바뀐다.
 -- idx 5/10/15/18/25/30/35는 board.ts 기준 황금열쇠/기금/우주여행 특수칸이라 여기서 제외

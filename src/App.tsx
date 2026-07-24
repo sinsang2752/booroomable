@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { Board } from './components/Board';
-import { DiceStage, ROLL_MS } from './components/DiceStage';
+import { DiceStage } from './components/DiceStage';
 import { LobbyScreen } from './components/LobbyScreen';
 import { MainScreen } from './components/MainScreen';
 import { NicknameScreen } from './components/NicknameScreen';
@@ -61,25 +61,6 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
   const [bubbles, setBubbles] = useState<Record<string, string>>({});
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const processedCountRef = useRef(0);
-
-  // 주사위가 새로 굴려지면 그 애니메이션(ROLL_MS)이 끝나는 시각까지 말 이동을 미룬다 —
-  // "주사위가 멈춘 뒤 말이 걷게" 하기 위함(Board → useAnimatedPositions). lastRoll은 refresh마다
-  // 새 배열로 오므로 값(key)이 실제로 바뀐 굴림에서만 홀드를 갱신한다.
-  const [moveHoldUntil, setMoveHoldUntil] = useState(0);
-  const lastRollKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    const roll = state?.lastRoll;
-    if (!roll) return;
-    const key = `${roll[0]}-${roll[1]}`;
-    if (lastRollKeyRef.current === null) {
-      // 재접속 등 첫 렌더는 이미 굴려진 상태 — 홀드 없이 바로.
-      lastRollKeyRef.current = key;
-      return;
-    }
-    if (lastRollKeyRef.current === key) return;
-    lastRollKeyRef.current = key;
-    setMoveHoldUntil(Date.now() + ROLL_MS);
-  }, [state?.lastRoll]);
 
   useEffect(() => {
     const newMessages = messages.slice(processedCountRef.current);
@@ -160,6 +141,9 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
   const currentPlayer = state.players[state.currentPlayerIndex];
   // 우측 자산 패널은 현재 턴 플레이어가 아니라 "나" 자신의 자산을 보여준다.
   const myEnginePlayer = state.players.find((p) => p.id === myPlayer?.id) ?? null;
+  // 새 굴림 식별자 — 바뀌면 Board가 주사위 애니메이션이 끝날 때까지 말 이동을 미룬다.
+  // rollSeq(서버가 굴릴 때만 +1)를 쓰므로 직전과 눈이 같아도(1/36) 항상 새 값이라 정확하다.
+  const rollKey = String(state.rollSeq);
 
   return (
     <div className="game-screen">
@@ -180,7 +164,7 @@ function GameScreen({ roomId, onRestart }: GameScreenProps) {
             bubbles={bubbles}
             selectableTiles={selectableTiles}
             onSelectTile={handleSelectTile}
-            moveHoldUntil={moveHoldUntil}
+            rollKey={rollKey}
           >
             {state.phase === 'game-over' ? (
               <ResultScreen winnerName={winner?.name ?? null} onRestart={onRestart} />
